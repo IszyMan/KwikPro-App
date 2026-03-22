@@ -2,11 +2,13 @@ class UserModel {
   final String uid;
   final String phone;
   final String role; // user or technician
+  final String? profilePic;
 
   UserModel({
     required this.uid,
     required this.phone,
     required this.role,
+    this.profilePic,
   });
 
   // Convert to Map (for Firestore)
@@ -15,6 +17,7 @@ class UserModel {
       'uid': uid,
       'phone': phone,
       'role': role,
+      'profilePic': profilePic ?? '',
     };
   }
 
@@ -24,6 +27,7 @@ class UserModel {
       uid: map['uid'] ?? '',
       phone: map['phone'] ?? '',
       role: map['role'] ?? '',
+      profilePic: map['profilePic'],
     );
   }
 }

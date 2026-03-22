@@ -1,28 +1,55 @@
+import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-
+import 'package:flutter/foundation.dart';
 
 class LocationService {
+  Future<Map<String, dynamic>?> getCurrentLocation() async {
+    try {
+      // Only request location on mobile (not web)
+      if (!kIsWeb) {
+        // Check permissions
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.deniedForever ||
+            permission == LocationPermission.denied) {
+          // User denied permission — return null safely
+          return null;
+        }
 
-  Future<Map<String, dynamic>> getCurrentLocation() async {
-    LocationPermission permission = await Geolocator.requestPermission();
+        // Get current position
+        Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+        // Get address info
+        List<Placemark> placemarks = [];
+        try {
+          placemarks = await placemarkFromCoordinates(
+              position.latitude, position.longitude);
+        } catch (e) {
+          print("Placemark lookup failed: $e");
+        }
 
-    List<Placemark> placemarks =
-    await placemarkFromCoordinates(position.latitude, position.longitude);
+        String address = "Unknown";
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          address = "${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
+        }
 
-    final place = placemarks.first;
-
-    String address = "${place.locality}, ${place.administrativeArea}";
-
-    return {
-      'lat': position.latitude,
-      'long': position.longitude,
-      'address': address,
-
-    };
+        return {
+          'lat': position.latitude,
+          'lng': position.longitude,
+          'address': address,
+        };
+      } else {
+        // Web: Cannot get GPS, return null safely
+        return null;
+      }
+    } catch (e) {
+      print("LocationService error: $e");
+      return null;
+    }
   }
 }

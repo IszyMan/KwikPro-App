@@ -5,7 +5,8 @@ import '../../providers/auth_provider.dart';
 import 'otp_screen.dart';
 
 class PhoneLoginScreen extends ConsumerStatefulWidget {
-  const PhoneLoginScreen({super.key});
+  final String role;
+  const PhoneLoginScreen({super.key, required this.role});
 
   @override
   ConsumerState<PhoneLoginScreen> createState() =>
@@ -36,7 +37,7 @@ class _PhoneLoginScreenState
 
     await authService.sendOtp(
       phoneNumber: phone,
-      codeSent: (verificationId) {
+      onCodeSent: (verificationId) {
         setState(() => isLoading = false);
 
         Navigator.push(
@@ -45,6 +46,7 @@ class _PhoneLoginScreenState
             builder: (_) => OtpScreen(
               verificationId: verificationId,
               phoneNumber: phone,
+              role: widget.role,
             ),
           ),
         );

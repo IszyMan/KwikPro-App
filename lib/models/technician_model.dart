@@ -4,10 +4,8 @@ class TechnicianModel {
   final String service;
   final String address;
 
-  final double lat;
-  final double long;
-
-  final double rating;
+  final double? lat;
+  final double? long;
 
   final String? profilePic;
   final String? workCertificate;
@@ -18,9 +16,8 @@ class TechnicianModel {
     required this.name,
     required this.service,
     required this.address,
-    required this.lat,
-    required this.long,
-    this.rating = 0.0,
+    this.lat,
+    this.long,
     this.profilePic,
     this.workCertificate,
     this.ninImage,
@@ -36,7 +33,6 @@ class TechnicianModel {
       'location': address,
       'lat': lat,
       'long': long,
-      'rating': rating,
       'profilePic': profilePic ?? '',
       'workCertificate': workCertificate ?? '',
       'ninImage': ninImage,
@@ -52,7 +48,6 @@ class TechnicianModel {
       address: map['address'],
       lat: (map['lat'] ?? 0).toDouble(),
       long: (map['long'] ?? 0).toDouble(),
-      rating: (map['rating'] ?? 0).toDouble(),
       profilePic: map['profilePic'],
       workCertificate: map['workCertificate'],
       ninImage: map['ninImage'],

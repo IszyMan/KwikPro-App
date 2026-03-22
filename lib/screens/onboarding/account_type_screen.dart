@@ -15,7 +15,7 @@ class AccountTypeScreen extends ConsumerWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => const PhoneLoginScreen(),
+        builder: (_) => PhoneLoginScreen(role: role),
       ),
     );
   }

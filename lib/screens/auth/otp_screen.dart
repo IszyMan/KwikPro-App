@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kwikpro/screens/technician/technician_signup_screen.dart';
 
-import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
-import '../user/user_home_screen.dart';
-import '../technician/technician_home_screen.dart';
+import '../../services/auth_service.dart';
+import '../splash/splash_screen.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   final String verificationId;
   final String phoneNumber;
+  final String role;
 
   const OtpScreen({
     super.key,
     required this.verificationId,
     required this.phoneNumber,
+    required this.role,
   });
 
   @override
@@ -23,7 +23,6 @@ class OtpScreen extends ConsumerStatefulWidget {
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
   final TextEditingController otpController = TextEditingController();
-
   bool isLoading = false;
 
   void _verifyOtp() async {
@@ -53,48 +52,22 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         throw Exception("User is null");
       }
 
-      // 🔹 HERE: CHECK FIRESTORE
-      final doc = await ref.read(firestoreServiceProvider).getUser(firebaseUser.uid);
-
-      if (doc != null) {
-        // EXISTING USER → LOGIN
-        ref.read(authProvider.notifier).setUser(doc);
-      } else {
-        // NEW USER → CREATE
-        final role = ref.read(authProvider).role ?? 'user';
-
-        final newUser = UserModel(
-          uid: firebaseUser.uid,
-          phone: firebaseUser.phoneNumber ?? '',
-          role: role,
-        );
-
-        await ref.read(firestoreServiceProvider).saveUser(newUser);
-        ref.read(authProvider.notifier).setUser(newUser);
-      }
+      // ✅ IMPORTANT: Sync Firebase user into provider
+      ref.read(authProvider.notifier).setUser(firebaseUser);
 
       setState(() => isLoading = false);
 
-      // 🔹 NAVIGATE BASED ON ROLE
-      final role = ref.read(authProvider).role ?? 'user';
-
-      if (role == 'user') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const UserHomeScreen()),
-              (route) => false,
-        );
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const TechnicianSignupScreen()),
-              (route) => false,
-        );
-      }
+      // ✅ ALWAYS go to SplashScreen (it decides everything)
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => SplashScreen(role: widget.role)),
+            (route) => false,
+      );
 
     } catch (e) {
       setState(() => isLoading = false);
-      print("ERROR: $e");
+      print("OTP ERROR: $e");
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
@@ -111,7 +84,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-
             const SizedBox(height: 40),
 
             Text(

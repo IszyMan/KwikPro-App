@@ -35,12 +35,12 @@ class TechnicianCard extends StatelessWidget {
 
                   ],
                 )),
-            Column(
+           /* Column(
               children: [
                 Icon(Icons.star, color: Colors.orange,),
                 Text(technician.rating.toString()),
               ],
-            )
+            ) */
 
           ],),
       ),

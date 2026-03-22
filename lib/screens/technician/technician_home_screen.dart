@@ -18,13 +18,13 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:  Text('Technician Profile'),
+        title:  Text('Welcome Technician: Technician Profile'),
         actions: [IconButton(
           icon: Icon(Icons.logout),
           tooltip: 'Logout',
           onPressed: () async {
             try {
-              await ref.read(authServiceProvider).auth.signOut();
+              await ref.read(authServiceProvider).signOut();
               // clear user from provider
               ref.read(authProvider.notifier).logout();
 

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -6,7 +5,6 @@ import 'package:kwikpro/models/technician_model.dart';
 import 'package:kwikpro/providers/auth_provider.dart';
 import 'package:kwikpro/screens/technician/technician_home_screen.dart';
 import 'package:kwikpro/services/location_service.dart';
-import 'package:kwikpro/services/storage_service.dart';
 
 
 
@@ -30,23 +28,20 @@ class _TechnicianSignupScreenState extends ConsumerState<TechnicianSignupScreen>
 
   String selectedService = "AC Repairer";
 
-  File? profilePic;
-  File? workCertificate;
-  File? ninImage;
+  final addressController = TextEditingController();
+
+  final profileUrlController = TextEditingController();
+  final certUrlController     = TextEditingController();
+  final ninUrlController      = TextEditingController();
+
 
   bool isLoading = false;
-
   final picker = ImagePicker();
 
-  //pick image
-Future<File?> pickImage() async{
-  final picked = await picker.pickImage(source: ImageSource.gallery);
-  if (picked != null) return File(picked.path);
-  return null;
-}
+
 
 // Get location
-Future<Map<String, dynamic>> getLocation() async {
+Future<Map<String, dynamic>?> getLocation() async {
   final locationService = LocationService();
   return await locationService.getCurrentLocation();
 }
@@ -57,39 +52,37 @@ Future<void> _saveTechnician() async {
 
   final auth = ref.read(authProvider);
   final firestore = ref.read(firestoreServiceProvider);
-  final storage = StorageService();
-  final location = await getLocation();
+  //final storage = StorageService();
 
-  String? profileUrl;
-  String? certUrl;
-  String? ninUrl;
+  Map<String, dynamic>? location;
+
+  try {
+    location = await getLocation();
+  } catch (e){
+     print("Location failed $e");
+  }
+
 
   //Upload image if selected
-  if (profilePic != null) {
-    profileUrl = await storage.uploadFile(
-        file: profilePic!,
-        path: "technicians/${auth.user!.uid}/profile.jpg",);
-  }
+    String? profileUrl = profileUrlController.text.trim().isNotEmpty ? profileUrlController.text.trim() : null;
+    String? certUrl    = certUrlController.text.trim().isNotEmpty ? certUrlController.text.trim() : null;
+    String? ninUrl     = ninUrlController.text.trim();
 
-  if (workCertificate != null) {
-    certUrl = await storage.uploadFile(
-        file: workCertificate!,
-        path: "technicians/${auth.user!.uid}/certificate.jpg");
-  }
-
-  if (ninImage != null) {
-    ninUrl = await storage.uploadFile(
-        file: ninImage!,
-        path: "technicians/${auth.user!.uid}/nin.jpg",);
-  }
+    if (ninUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("NIN / ID URL is required!")),
+      );
+      setState(() => isLoading = false);
+      return;
+    }
 
   final tech = TechnicianModel(
       uid: auth.user!.uid,
       name: nameController.text.trim(),
       service: selectedService,
-      address: location['address'],
-      lat: location['lat'],
-      long: location['long'],
+      address: addressController.text.trim(),
+      lat: location?['lat'],
+      long: location?['lng'],
       profilePic: profileUrl,
       workCertificate: certUrl,
       ninImage: ninUrl,
@@ -132,36 +125,42 @@ Future<void> _saveTechnician() async {
               },
             decoration: const InputDecoration(labelText: "Service"),
           ),
-          SizedBox(height: 10,),
+          SizedBox(height: 20,),
+       TextField(
+         controller: addressController,
+         decoration: InputDecoration(labelText: "Your area (e.g Ajah, Lekki)"),
+       ),
 
-      // Profile Image
-      ElevatedButton(
-        onPressed: () async {
-          profilePic = await pickImage();
-          setState(() {});
-        },
-        child: const Text("Upload Profile Picture (Optional)"),
-      ),
+       SizedBox(height: 20),
+        // Profile (optional)
+       TextField(
+            controller: profileUrlController,
+            decoration: const InputDecoration(
+              labelText: "Profile Picture URL (optional)",
+              hintText: "https://example.com/profile.jpg",
+            ),
+          ),
+       SizedBox(height: 20),
 
-      // Certificate
-      ElevatedButton(
-        onPressed: () async {
-          workCertificate = await pickImage();
-          setState(() {});
-        },
-        child: const Text("Upload Work Certificate (Optional)"),
-      ),
+          // Certificate (optional)
+       TextField(
+            controller: certUrlController,
+            decoration: const InputDecoration(
+              labelText: "Work Certificate URL (optional)",
+              hintText: "https://example.com/cert.jpg",
+            ),
+          ),
+       SizedBox(height: 20),
 
-      // NIN Image
-      ElevatedButton(
-        onPressed: () async {
-          ninImage = await pickImage();
-          setState(() {});
-        },
-        child: const Text("Upload NIN / ID (Required)"),
-      ),
-
-      const SizedBox(height: 20),
+          // NIN (required)
+       TextField(
+            controller: ninUrlController,
+            decoration: const InputDecoration(
+              labelText: "NIN / ID URL (required)",
+              hintText: "Paste public image link here",
+            ),
+          ),
+      SizedBox(height: 20),
 
       SizedBox(
         width: double.infinity,

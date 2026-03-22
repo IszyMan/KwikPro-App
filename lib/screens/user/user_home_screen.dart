@@ -29,13 +29,13 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen>{
     final technicians = ref.watch(technicianProvider);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Find Technicians'),
+        title: Text('Welcome user: Find Technicians'),
         actions: [IconButton(
             icon: Icon(Icons.logout),
             tooltip: 'Logout',
             onPressed: () async {
               try {
-                await ref.read(authServiceProvider).auth.signOut();
+                await ref.read(authServiceProvider).signOut();
                 // clear user from provider
                 ref.read(authProvider.notifier).logout();
 
