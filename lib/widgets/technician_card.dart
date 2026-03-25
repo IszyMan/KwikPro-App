@@ -10,39 +10,96 @@ class TechnicianCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: EdgeInsets.only(bottom: 15),
-      child: Padding(padding: EdgeInsets.all(15),
+      child: Padding(
+        padding: EdgeInsets.all(15),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            //avatar
+            // Avatar
             CircleAvatar(
               radius: 25,
-              child: Icon(Icons.person),
+              backgroundImage: (technician.profilePic != null &&
+                  technician.profilePic!.isNotEmpty)
+                  ? NetworkImage(technician.profilePic!)
+                  : null,
+              child: (technician.profilePic == null ||
+                  technician.profilePic!.isEmpty)
+                  ? Icon(Icons.person)
+                  : null,
             ),
-            SizedBox(width: 15,),
+
+            SizedBox(width: 15),
+
+            // Technician Info
             Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    technician.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(technician.service),
+                  SizedBox(height: 4),
+                  Text(
+                    technician.address,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+
+            // Stats Section
+            Row(
+              children: [
+                Column(
                   children: [
                     Text(
-                      technician.name,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-
+                      "0",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                    SizedBox(height: 5,),
-                    Text(technician.service),
-                    SizedBox(height: 5,),
-                    Text(technician.address, style: TextStyle(color: Colors.grey),)
-
+                    SizedBox(height: 2),
+                    Text(
+                      "Jobs",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                   ],
-                )),
-           /* Column(
-              children: [
-                Icon(Icons.star, color: Colors.orange,),
-                Text(technician.rating.toString()),
-              ],
-            ) */
+                ),
 
-          ],),
+                SizedBox(width: 15), // ✅ spacing between stats
+
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.star, color: Colors.orange, size: 16),
+                        SizedBox(width: 3),
+                        Text(
+                          "4.5",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      "Rating",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
 
     );

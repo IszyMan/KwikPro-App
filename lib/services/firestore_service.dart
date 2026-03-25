@@ -29,4 +29,8 @@ class FirestoreService {
   Future<void> saveTechnician(TechnicianModel technician) async {
     await _db.collection('technicians').doc(technician.uid).set(technician.toMap());
   }
+
+  Future<void> updateOnlineStatus(String uid, bool isOnline) async {
+    await _db.collection('technicians').doc(uid).update({'isOnline': isOnline});
+  }
 }

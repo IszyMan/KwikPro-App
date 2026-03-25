@@ -154,7 +154,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             ),
             SizedBox(height: 12),
             Text(
-              "Connecting Users to Nearby Local Professionals",
+              "Connecting Users to Nearby Repair Professionals",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18),
             ),

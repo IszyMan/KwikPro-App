@@ -37,11 +37,11 @@ class WelcomeScreen extends StatelessWidget {
             const SizedBox(height: 10),
 
             const Text(
-              "Find trusted technicians near you or offer your services easily.",
+              "Find trusted Repair technicians nearby or offer your services easily.",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey,
+                color: Colors.blueAccent,
               ),
             ),
 
