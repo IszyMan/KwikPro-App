@@ -8,33 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../onboarding/welcome_screen.dart';
 
-// Mock Data
-final List<Map<String, dynamic>> pendingJobs = [
-  {
-    'user': 'Ade',
-    'service': 'AC Repair',
-    'location': 'Yaba, Lagos',
-    'distance': '2.3 km',
-    'description': 'AC not cooling'
-  },
-  {
-    'user': 'Tunde',
-    'service': 'Fridge Repair',
-    'location': 'Ikeja, Lagos',
-    'distance': '4.1 km',
-    'description': 'Fridge making noise'
-  },
-];
 
-final List<Map<String, dynamic>> completedJobs = [
-  {'service': 'Plumbing', 'date': '22 Mar', 'price': 5000, 'rating': 5},
-  {'service': 'Electrician', 'date': '20 Mar', 'price': 3000, 'rating': 4},
-];
-
-final List<Map<String, dynamic>> reviews = [
-  {'user': 'Mary', 'rating': 5, 'comment': 'Great work, punctual.'},
-  {'user': 'John', 'rating': 4, 'comment': 'Reasonable price, fixed quickly.'},
-];
 
 class TechnicianHomeScreen extends ConsumerStatefulWidget {
   const TechnicianHomeScreen({super.key});
@@ -96,13 +70,9 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
     super.dispose();
   }
 
-  // BottomNav
-  int _selectedIndex = 0;
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +108,7 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
             final data = doc.data() as Map<String, dynamic>?;
 
             final name = data?['name'] ?? 'Technician';
+            final serviceType = data?['service'] ?? 'Technician';
             final profileUrl = data?['profilePic'] ?? '';
 
             return Row(
@@ -150,7 +121,7 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
                   child: profileUrl.isEmpty ? Icon(Icons.person, size: 30) : null,
                 ),
                 SizedBox(width: 10),
-                Text(name,
+                Text("$name $serviceType",
                     style: TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold)),
                 Spacer(),
@@ -208,51 +179,11 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
             Text('Ratings & Reviews',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
-            Column(
-              children: reviews
-                  .map((review) => Card(
-                margin: EdgeInsets.symmetric(vertical: 5),
-                child: ListTile(
-                  title: Text(review['user']),
-                  subtitle: Text(review['comment']),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(
-                        review['rating'],
-                            (index) =>
-                            Icon(Icons.star, color: Colors.orange, size: 16)),
-                  ),
-                ),
-              ))
-                  .toList(),
-            ),
+
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.work),
-            label: 'Jobs',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+
     );
   }
 }

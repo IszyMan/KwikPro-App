@@ -22,8 +22,10 @@ class _TechnicianSignupScreenState extends ConsumerState<TechnicianSignupScreen>
   final services = [
     "AC Repairer",
     "Plumber",
-    "Fridge Repairer",
+    "Generator Repairer",
     "Electrician",
+    "Painter",
+    "Fridge Repairer",
   ];
 
   String selectedService = "AC Repairer";

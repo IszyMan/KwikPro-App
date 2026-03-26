@@ -21,8 +21,10 @@ class LocationService {
 
         // Get current position
         Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high);
-
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+          ),
+        );
         // Get address info
         List<Placemark> placemarks = [];
         try {

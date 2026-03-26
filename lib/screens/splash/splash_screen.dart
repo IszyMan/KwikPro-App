@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:kwikpro/screens/technician/technician_main_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../onboarding/account_type_screen.dart';
 import '../onboarding/welcome_screen.dart';
-import '../user/user_home_screen.dart';
+import '../user/user_main_screen.dart';
 import '../user/user_signup_screen.dart';
 import '../technician/technician_home_screen.dart';
 import '../technician/technician_signup_screen.dart';
@@ -44,9 +44,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 //  CASE 1: BOTH EXIST
     if (techSnap.exists && userSnap.exists) {
       if (selectedRole == 'technician') {
-        _navigateTo(const TechnicianHomeScreen());
+        _navigateTo(const TechnicianMainScreen());
       } else {
-        _navigateTo(const UserHomeScreen());
+        _navigateTo(const UserMainScreen());
       }
       return;
     }
@@ -57,7 +57,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         _showSwitchDialog(isTechnician: true);
         return;
       } else {
-        _navigateTo(const TechnicianHomeScreen());
+        _navigateTo(const TechnicianMainScreen());
         return;
       }
     }
@@ -68,7 +68,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         _showSwitchDialog(isTechnician: false);
         return;
       } else {
-        _navigateTo(const UserHomeScreen());
+        _navigateTo(const UserMainScreen());
         return;
       }
     }
@@ -110,9 +110,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
               // Continue existing
               if (isTechnician) {
-                _navigateTo(const TechnicianHomeScreen());
+                _navigateTo(const TechnicianMainScreen());
               } else {
-                _navigateTo(const UserHomeScreen());
+                _navigateTo(const UserMainScreen());
               }
             },
             child: const Text("Continue Existing"),

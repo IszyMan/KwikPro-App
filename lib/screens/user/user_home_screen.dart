@@ -12,8 +12,7 @@ class UserHomeScreen extends ConsumerStatefulWidget {
   const UserHomeScreen({super.key});
 
   @override
-  ConsumerState<UserHomeScreen> createState() =>
-      _UserHomeScreenState();
+  ConsumerState<UserHomeScreen> createState() => _UserHomeScreenState();
 }
 
 class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
@@ -23,8 +22,6 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Fetch user info
     _loadUser();
   }
 
@@ -44,7 +41,6 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -53,8 +49,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
               radius: 18,
               backgroundImage:
               profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
-              child:
-              profilePic.isEmpty ? Icon(Icons.person, size: 20) : null,
+              child: profilePic.isEmpty ? Icon(Icons.person, size: 20) : null,
             ),
             SizedBox(width: 10),
             Text('Hi, $name'),
@@ -71,8 +66,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(
-                      builder: (_) => const WelcomeScreen()),
+                  MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                       (route) => false,
                 );
               } catch (e) {
@@ -104,10 +98,13 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
             return ListView.builder(
               itemCount: technicians.length,
               itemBuilder: (context, index) {
-                final data = technicians[index].data() as Map<String, dynamic>;
+                final data =
+                technicians[index].data() as Map<String, dynamic>;
 
                 return TechnicianCard(
                   technician: TechnicianModel.fromMap(data),
+                  issueDescription: "", // provide empty or default
+                  imageUrl: "", // provide empty or default
                 );
               },
             );
