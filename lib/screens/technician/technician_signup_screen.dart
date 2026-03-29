@@ -159,7 +159,7 @@ Future<void> _saveTechnician() async {
             controller: ninUrlController,
             decoration: const InputDecoration(
               labelText: "NIN / ID URL (required)",
-              hintText: "Paste public image link here",
+              hintText: "Paste NIN image link here",
             ),
           ),
       SizedBox(height: 20),

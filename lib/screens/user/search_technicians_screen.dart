@@ -15,6 +15,7 @@ class SearchTechnicianScreen extends StatefulWidget {
 class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedService;
+  String _serviceLocationAddress = '';
   String _issueDescription = '';
   String _imageUrl = '';
   bool _loading = false;
@@ -53,7 +54,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
                       labelText: 'Select Service',
                       border: OutlineInputBorder(),
                     ),
-                    value: _selectedService,
+                    initialValue: _selectedService,
                     items: services
                         .map((s) =>
                         DropdownMenuItem(value: s, child: Text(s)))
@@ -61,6 +62,18 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
                     onChanged: (val) => setState(() => _selectedService = val),
                     validator: (val) =>
                     val == null ? 'Please select a service' : null,
+                  ),
+                  SizedBox(height: 15),
+
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Service Location (Where service is needed)',
+                      hintText: 'e.g. 12 Allen Avenue, Ikeja',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (val) => _serviceLocationAddress = val,
+                    validator: (val) =>
+                    val == null || val.isEmpty ? 'Enter service location' : null,
                   ),
                   SizedBox(height: 15),
                   TextFormField(
@@ -172,6 +185,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
                         technician: nearby[index],
                         userLat: userLat,
                         userLng: userLng,
+                        serviceLocationAddress: _serviceLocationAddress,
                         issueDescription: _issueDescription,
                         imageUrl: _imageUrl,
                       );
@@ -181,70 +195,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
               ),
             ),
 
-            // User request status
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('requests')
-                  .where('userId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-                  .orderBy('createdAt', descending: true)
-                  .limit(1)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const SizedBox(); // No request yet
-                }
 
-                final data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
-
-                // Save current request to state
-                currentRequest = data;
-
-                // Only show if status is pending, accepted, rejected, or cancelled
-                String status = data['status'] ?? '';
-                Color bg = Colors.blue;
-                String msg = '';
-
-                switch (status) {
-                  case 'pending':
-                    bg = Colors.blue;
-                    msg = "Waiting for technician...";
-                    break;
-                  case 'accepted':
-                    bg = Colors.green;
-                    msg = "Technician accepted your request";
-                    break;
-                  case 'rejected':
-                    bg = Colors.red;
-                    msg = "Technician rejected your request";
-                    break;
-                  case 'cancelled':
-                    bg = Colors.orange;
-                    msg = "Request timed out. Choose another technician.";
-                    break;
-                  default:
-                    return const SizedBox(); // Don't show unknown statuses
-                }
-
-                return AnimatedContainer(
-                  duration: Duration(milliseconds: 300),
-                  padding: EdgeInsets.all(10),
-                  color: bg,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          msg,
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      if (status == 'accepted')
-                        Icon(Icons.check_circle, color: Colors.white)
-                    ],
-                  ),
-                );
-              },
-            ),
           ],
         ),
       ),

@@ -3,6 +3,7 @@ class RequestModel {
   final String userId;
   final String technicianId;
   final String service;
+  final String serviceLocationAddress;
   final String description;
   final String? imageUrl;
   final double userLat;
@@ -15,6 +16,7 @@ class RequestModel {
     required this.userId,
     required this.technicianId,
     required this.service,
+    required this.serviceLocationAddress,
     required this.description,
     this.imageUrl,
     required this.userLat,
@@ -28,6 +30,7 @@ class RequestModel {
       "userId": userId,
       "technicianId": technicianId,
       "service": service,
+      "serviceLocationAddress": serviceLocationAddress,
       "description": description,
       "imageUrl": imageUrl,
       "userLat": userLat,

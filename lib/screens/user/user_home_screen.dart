@@ -103,6 +103,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
                 return TechnicianCard(
                   technician: TechnicianModel.fromMap(data),
+                  serviceLocationAddress: "",
                   issueDescription: "", // provide empty or default
                   imageUrl: "", // provide empty or default
                 );

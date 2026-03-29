@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:kwikpro/screens/technician/technician_dashboard.dart';
 import 'package:kwikpro/screens/technician/technician_home_screen.dart';
-import 'package:kwikpro/screens/technician/technician_request_screen.dart';
 
 
 class TechnicianMainScreen extends StatefulWidget {
@@ -16,7 +16,7 @@ class _TechnicianMainScreenState extends State<TechnicianMainScreen> {
 
   final List<Widget> _screens = [
     TechnicianHomeScreen(),
-    TechnicianRequestScreen(),
+    TechnicianDashboard(),
 
   ];
   void _onItemTapped(int index) {
@@ -42,12 +42,9 @@ class _TechnicianMainScreenState extends State<TechnicianMainScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.work),
-            label: 'Jobs',
+            label: 'Dashboard',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'History',
-          ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profile',
