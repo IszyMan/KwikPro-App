@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kwikpro/screens/user/search_technicians_screen.dart';
+import 'package:kwikpro/screens/user/user_contacts.dart';
 import 'package:kwikpro/screens/user/user_profile_screen.dart';
 import 'user_home_screen.dart';
 
@@ -16,6 +17,7 @@ class _UserMainScreenState extends State<UserMainScreen> {
   final List<Widget> _screens = [
     UserHomeScreen(),
     SearchTechnicianScreen(),
+    UserContacts(),
     UserProfileScreen(),
 
   ];
@@ -40,6 +42,8 @@ class _UserMainScreenState extends State<UserMainScreen> {
               icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
               icon: Icon(Icons.search), label: 'Search'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.phone), label: 'Contacts'),
           BottomNavigationBarItem(
               icon: Icon(Icons.home), label: 'Profile'),
 

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kwikpro/models/technician_model.dart';
 import 'package:kwikpro/providers/auth_provider.dart';
-import 'package:kwikpro/screens/technician/technician_home_screen.dart';
+import 'package:kwikpro/screens/technician/technician_main_screen.dart';
 import 'package:kwikpro/services/location_service.dart';
 
 
@@ -28,11 +28,15 @@ class _TechnicianSignupScreenState extends ConsumerState<TechnicianSignupScreen>
     "Fridge Repairer",
   ];
 
-  String selectedService = "AC Repairer";
+  String selectedService = "What service do you offer?";
+
+  final yearsOfExperienceController = TextEditingController();
 
   final addressController = TextEditingController();
 
   final profileUrlController = TextEditingController();
+  final workToolsController = TextEditingController();
+  final previousWorkImageController = TextEditingController();
   final certUrlController     = TextEditingController();
   final ninUrlController      = TextEditingController();
 
@@ -67,6 +71,8 @@ Future<void> _saveTechnician() async {
 
   //Upload image if selected
     String? profileUrl = profileUrlController.text.trim().isNotEmpty ? profileUrlController.text.trim() : null;
+    String? workToolsImage = workToolsController.text.trim().isNotEmpty ? workToolsController.text.trim() : null;
+    String? previousWorkImage = previousWorkImageController.text.trim().isNotEmpty ? previousWorkImageController.text.trim() : null;
     String? certUrl    = certUrlController.text.trim().isNotEmpty ? certUrlController.text.trim() : null;
     String? ninUrl     = ninUrlController.text.trim();
 
@@ -82,12 +88,18 @@ Future<void> _saveTechnician() async {
       uid: auth.user!.uid,
       name: nameController.text.trim(),
       service: selectedService,
+      yearsOfExperience: int.tryParse(yearsOfExperienceController.text.trim()) ?? 0,
       address: addressController.text.trim(),
       lat: location?['lat'],
       long: location?['lng'],
       profilePic: profileUrl,
+      workToolsImage: workToolsImage,
+      previousWorkImage: previousWorkImage,
       workCertificate: certUrl,
       ninImage: ninUrl,
+      isVerified: false,
+      isSuspended: false,
+
   );
 
   await firestore.saveTechnician(tech);
@@ -96,7 +108,7 @@ Future<void> _saveTechnician() async {
   setState(() => isLoading = false);
   Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => TechnicianHomeScreen(),),
+      MaterialPageRoute(builder: (_) => TechnicianMainScreen(),),
       (route) => false
   );
 
@@ -116,7 +128,7 @@ Future<void> _saveTechnician() async {
           SizedBox(height: 10,),
 
           DropdownButtonFormField(
-              value: selectedService,
+              initialValue: selectedService,
               items: services.map((s) {
                 return DropdownMenuItem(
                   value: s,
@@ -125,49 +137,75 @@ Future<void> _saveTechnician() async {
               onChanged: (val) {
                 if (val != null) selectedService = val;
               },
-            decoration: const InputDecoration(labelText: "Service"),
+            decoration: const InputDecoration(labelText: "What service do you offer?"),
           ),
           SizedBox(height: 20,),
-       TextField(
-         controller: addressController,
-         decoration: InputDecoration(labelText: "Your area (e.g Ajah, Lekki)"),
-       ),
 
-       SizedBox(height: 20),
-        // Profile (optional)
-       TextField(
+          TextField(
+            controller:  yearsOfExperienceController,
+            decoration: InputDecoration(labelText: "Your years of Experience"),
+          ),
+
+          SizedBox(height: 20,),
+
+          TextField(
+           controller: addressController,
+           decoration: InputDecoration(labelText: "Your area (e.g Ajah, Lekki)"),
+          ),
+
+          SizedBox(height: 20),
+          // Profile (optional)
+          TextField(
             controller: profileUrlController,
             decoration: const InputDecoration(
               labelText: "Profile Picture URL (optional)",
               hintText: "https://example.com/profile.jpg",
             ),
           ),
-       SizedBox(height: 20),
+          SizedBox(height: 20),
+
+          TextField(
+            controller: workToolsController,
+            decoration: const InputDecoration(
+              labelText: "Enter images of your working tools ",
+              hintText: "https://example.com/worktools.jpg",
+            ),
+          ),
+          SizedBox(height: 20),
+
+          TextField(
+            controller: previousWorkImageController,
+            decoration: const InputDecoration(
+              labelText: "Enter images of your past jobs ",
+              hintText: "https://example.com/pastjobs.jpg",
+            ),
+          ),
+          SizedBox(height: 20),
 
           // Certificate (optional)
-       TextField(
+          TextField(
             controller: certUrlController,
             decoration: const InputDecoration(
               labelText: "Work Certificate URL (optional)",
               hintText: "https://example.com/cert.jpg",
             ),
           ),
-       SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // NIN (required)
-       TextField(
+          TextField(
             controller: ninUrlController,
             decoration: const InputDecoration(
               labelText: "NIN / ID URL (required)",
               hintText: "Paste NIN image link here",
             ),
           ),
-      SizedBox(height: 20),
+          SizedBox(height: 20),
 
-      SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton(
+          SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
           onPressed: isLoading ? null : _saveTechnician,
           child: isLoading
               ? const CircularProgressIndicator(color: Colors.white)

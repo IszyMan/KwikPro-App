@@ -39,7 +39,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Find Nearby Technician')),
+      appBar: AppBar(title: Text('Find The Best Technicians Near You')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -152,6 +152,8 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
                 stream: FirebaseFirestore.instance
                     .collection('technicians')
                     .where('isOnline', isEqualTo: true)
+                    .where('isVerified', isEqualTo: true)
+                    .where('isSuspended', isEqualTo: false)
                     .where('service', isEqualTo: _selectedService)
                     .snapshots(),
                 builder: (context, snapshot) {

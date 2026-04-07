@@ -2,27 +2,43 @@ class TechnicianModel {
   final String uid;
   final String name;
   final String service;
+  final int yearsOfExperience;
   final String address;
 
   final double? lat;
   final double? long;
 
   final String? profilePic;
+  final String? workToolsImage;
+  final String? previousWorkImage;
   final String? workCertificate;
   final String? ninImage;
   final bool isOnline;
+  final bool isVerified;
+  final bool isSuspended;
+  final int? completedJobs;
+  final double? avgPriceRating;
+  final double? avgServiceRating;
 
   TechnicianModel({
     required this.uid,
     required this.name,
     required this.service,
+    required this.yearsOfExperience,
     required this.address,
     this.lat,
     this.long,
     this.profilePic,
+    this.workToolsImage,
+    this.previousWorkImage,
     this.workCertificate,
     this.ninImage,
     this.isOnline = false,
+    this.isVerified = false,
+    this.isSuspended =false,
+    this.completedJobs,
+    this.avgPriceRating,
+    this.avgServiceRating,
   });
 
   Map<String, dynamic> toMap() {
@@ -30,13 +46,21 @@ class TechnicianModel {
       'uid': uid,
       'name': name,
       'service': service,
-      'location': address, // keep this consistent
+      'yearsOfExperience': yearsOfExperience,
+      'location': address,
       'lat': lat,
       'long': long,
       'profilePic': profilePic ?? '',
+      'workToolsImage': workToolsImage ?? '',
+      'previousWorkImage': previousWorkImage ?? '',
       'workCertificate': workCertificate ?? '',
       'ninImage': ninImage ?? '',
       'isOnline': isOnline,
+      'isVerified': isVerified,
+      'isSuspended': isSuspended,
+      'completedJobs': completedJobs,
+      'avgPriceRating': avgPriceRating,
+      'avgServiceRating': avgServiceRating,
     };
   }
 
@@ -45,21 +69,21 @@ class TechnicianModel {
       uid: map['uid'] ?? '',
       name: map['name'] ?? '',
       service: map['service'] ?? '',
-
-
+      yearsOfExperience: (map['yearsOfExperience'] ?? 0) as int,
       address: map['location'] ?? '',
-
-      //  SAFE double parsing
       lat: map['lat'] != null ? (map['lat'] as num).toDouble() : null,
       long: map['long'] != null ? (map['long'] as num).toDouble() : null,
-
-      // SAFE nullable strings
       profilePic: map['profilePic'] ?? '',
+      workToolsImage: map['workToolsImage'] ?? '',
+      previousWorkImage: map['previousWorkImage'] ?? '',
       workCertificate: map['workCertificate'] ?? '',
       ninImage: map['ninImage'] ?? '',
-
-      // SAFE boolean
       isOnline: map['isOnline'] ?? false,
+      isVerified: map['isVerified'] ?? false,
+      isSuspended: map['isSuspended'] ?? false,
+      completedJobs: map['completedJobs'] ?? 0,
+      avgPriceRating: (map['avgPriceRating'] ?? 0).toDouble(),
+      avgServiceRating: (map['avgServiceRating'] ?? 0).toDouble(),
     );
   }
 }

@@ -83,6 +83,8 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
           stream: FirebaseFirestore.instance
               .collection('technicians')
               .where('isOnline', isEqualTo: true)
+              .where('isVerified', isEqualTo: true)
+              .where('isSuspended', isEqualTo: false)
               .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {

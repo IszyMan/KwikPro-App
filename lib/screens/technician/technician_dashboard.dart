@@ -16,8 +16,15 @@ class _TechnicianDashboardState extends State<TechnicianDashboard>
 
   @override
   void initState() {
-    _tabController = TabController(length: 3, vsync: this);
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+
+  }
+
+  void goToAcceptedJobs() {
+    setState(() {
+      _tabController.animateTo(1);
+    });
   }
 
   @override
@@ -35,9 +42,10 @@ class _TechnicianDashboardState extends State<TechnicianDashboard>
         ),
       ),
       body: TabBarView(
+        physics: AlwaysScrollableScrollPhysics(),
         controller: _tabController,
         children: [
-          IncomingRequestsScreen(),
+          IncomingRequestsScreen(onJobAccepted: goToAcceptedJobs),
           TechnicianActiveJobsScreen(),
           CompletedJobsScreen(),
         ],

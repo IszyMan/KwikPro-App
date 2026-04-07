@@ -129,14 +129,36 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
             final data = snapshot.data!.data() as Map<String, dynamic>?;
             final name = data?['name'] ?? 'Technician';
             final serviceType = data?['service'] ?? '';
+            final yearsOfExperience = data?['yearsOfExperience'] ?? '';
             final profileUrl = data?['profilePic'] ?? '';
+            final isVerified = data?['isVerified'] ?? false;
+            final isSuspended = data?['isSuspended'] ?? false;
+
+
 
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$name $serviceType',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    '$name  $serviceType ',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+
+                Text('Experience: $yearsOfExperience years +'),
+
+                Text(
+                  isSuspended ? 'Suspended' : 'Active',
+                  style: TextStyle(
+                    color: isSuspended ? Colors.red : Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  isVerified ? 'Verified ✅' : 'Pending Verification ⏳',
+                  style: TextStyle(
+                    color: isVerified ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 CircleAvatar(
                   radius: 20,

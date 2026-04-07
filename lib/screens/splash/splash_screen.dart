@@ -1,15 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kwikpro/screens/admin/admin_dashboard_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../onboarding/account_type_screen.dart';
 import '../onboarding/welcome_screen.dart';
-import '../technician/technician_dashboard.dart';
 import '../technician/technician_main_screen.dart';
 import '../user/user_main_screen.dart';
 import '../user/user_signup_screen.dart';
-import '../technician/technician_home_screen.dart';
 import '../technician/technician_signup_screen.dart';
+
 
 class SplashScreen extends ConsumerStatefulWidget {
   final String? role;
@@ -41,6 +41,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     final techSnap = await db.collection('technicians').doc(firebaseUser.uid).get();
     final userSnap = await db.collection('users').doc(firebaseUser.uid).get();
+
+
+    final userData = userSnap.data();
+    final userRole = userData?['role'] ?? 'user';
+
+    // Check if it's admin
+    if (userRole == 'admin') {
+      _navigateTo(AdminDashboardScreen());
+      return;
+    }
 
 //  CASE 1: BOTH EXIST
     if (techSnap.exists && userSnap.exists) {

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kwikpro/providers/auth_provider.dart';
+import 'package:kwikpro/screens/user/search_technicians_screen.dart';
 import 'package:kwikpro/screens/user/user_home_screen.dart';
 import 'package:kwikpro/services/auth_service.dart';
 
@@ -34,14 +35,14 @@ class _UserSignupScreenState extends ConsumerState<UserSignupScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const UserHomeScreen()),
+      MaterialPageRoute(builder: (_) => const SearchTechnicianScreen()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Complete Your Profile")),
+      appBar: AppBar(title: const Text("Welcome! Please Complete Your KwikPro Profile")),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

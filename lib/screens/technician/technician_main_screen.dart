@@ -17,6 +17,7 @@ class _TechnicianMainScreenState extends State<TechnicianMainScreen> {
   final List<Widget> _screens = [
     TechnicianHomeScreen(),
     TechnicianDashboard(),
+    Text("Profile")
 
   ];
   void _onItemTapped(int index) {

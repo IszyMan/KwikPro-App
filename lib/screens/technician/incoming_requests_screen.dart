@@ -1,10 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:kwikpro/screens/technician/technician_accepted_jobs_screen.dart';
+import 'package:kwikpro/screens/technician/technician_home_screen.dart';
+import 'package:kwikpro/screens/technician/technician_main_screen.dart';
 
-class IncomingRequestsScreen extends StatelessWidget {
-  const IncomingRequestsScreen({super.key});
+class IncomingRequestsScreen extends StatefulWidget {
+  final VoidCallback onJobAccepted;
 
+  const IncomingRequestsScreen({super.key, required this.onJobAccepted});
+
+  @override
+  State<IncomingRequestsScreen> createState() => _IncomingRequestsScreenState();
+}
+class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
   @override
   Widget build(BuildContext context) {
     final technicianId = FirebaseAuth.instance.currentUser!.uid;
@@ -29,6 +38,7 @@ class IncomingRequestsScreen extends StatelessWidget {
           itemBuilder: (context, index) {
             final doc = requests[index];
             final data = doc.data() as Map<String, dynamic>;
+
 
             return Card(
               margin: EdgeInsets.all(10),
@@ -61,20 +71,33 @@ class IncomingRequestsScreen extends StatelessWidget {
                       ),
                   ],
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.check, color: Colors.green),
-                      onPressed: () =>
-                          _updateStatus(doc.id, "accepted"),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close, color: Colors.red),
-                      onPressed: () =>
-                          _updateStatus(doc.id, "rejected"),
-                    ),
-                  ],
+                trailing: SizedBox(
+                  width: 100,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          print("BUTTON CLICKED");
+                          _updateStatus(context, doc.id, "accepted");
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(Icons.check, color: Colors.green),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          print("REJECT CLICKED");
+                          _updateStatus(context, doc.id, "rejected");
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(Icons.close, color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -84,10 +107,30 @@ class IncomingRequestsScreen extends StatelessWidget {
     );
   }
 
-  void _updateStatus(String requestId, String status) async {
-    await FirebaseFirestore.instance
-        .collection('requests')
-        .doc(requestId)
-        .update({"status": status});
+  void _updateStatus(BuildContext context, String requestId, String status) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('requests')
+          .doc(requestId)
+          .update({"status": status});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            status == "accepted" ? "Job accepted ✅" : "Job rejected ❌",
+          ),
+        ),
+      );
+
+      if (status == "accepted") {
+        print("ACCEPT CLICKED");
+        widget.onJobAccepted();
+      }
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
   }
 }
