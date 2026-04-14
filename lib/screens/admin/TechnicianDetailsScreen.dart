@@ -32,10 +32,14 @@ class _TechnicianDetailsScreenState extends State<TechnicianDetailsScreen> {
     final experience = widget.data['yearsOfExperience'] ?? 0;
     final location = widget.data['location'] ?? 'No Location';
     final profilePic = widget.data['profilePic'] ?? '';
+    final workToolsImage = widget.data['workToolsImage'] ?? '';
+    final previousWorkImage = widget.data['previousWorkImage'] ?? '';
     final workCertificate = widget.data['workCertificate'] ?? '';
     final nin = widget.data['ninImage'] ?? '';
     final service = widget.data['service'] ?? 'No Service';
 
+    final hasWorkTools = workToolsImage.isNotEmpty;
+    final hasPreviousWorkImage = previousWorkImage.isNotEmpty;
     final hasProfilePic = profilePic.isNotEmpty;
     final hasNin = nin.isNotEmpty;
     final hasCertificate = workCertificate.isNotEmpty;
@@ -96,6 +100,8 @@ class _TechnicianDetailsScreenState extends State<TechnicianDetailsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildDocumentItem('Profile', hasProfilePic, profilePic),
+                        _buildDocumentItem('Working Tools', hasWorkTools, workToolsImage),
+                        _buildDocumentItem('Previous Work', hasPreviousWorkImage, previousWorkImage),
                         _buildDocumentItem('NiN', hasNin, nin),
                         _buildDocumentItem('Certificate', hasCertificate, workCertificate),
                       ],

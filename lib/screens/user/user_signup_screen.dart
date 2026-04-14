@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kwikpro/providers/auth_provider.dart';
 import 'package:kwikpro/screens/user/search_technicians_screen.dart';
-import 'package:kwikpro/screens/user/user_home_screen.dart';
-import 'package:kwikpro/services/auth_service.dart';
-
 
 class UserSignupScreen extends ConsumerStatefulWidget {
   const UserSignupScreen({super.key});

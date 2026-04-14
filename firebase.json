@@ -1,1 +1,40 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"kwikpro-app","appId":"1:648958053897:android:287e9ce50154ac8e36b2d8","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"kwikpro-app","configurations":{"android":"1:648958053897:android:287e9ce50154ac8e36b2d8","web":"1:648958053897:web:99a585daf09aad6d36b2d8","windows":"1:648958053897:web:5ddecb88f251d4aa36b2d8"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "kwikpro-app",
+          "appId": "1:648958053897:android:287e9ce50154ac8e36b2d8",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "kwikpro-app",
+          "configurations": {
+            "android": "1:648958053897:android:287e9ce50154ac8e36b2d8",
+            "web": "1:648958053897:web:99a585daf09aad6d36b2d8",
+            "windows": "1:648958053897:web:5ddecb88f251d4aa36b2d8"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+
+      ]
+    }
+  ]
+}

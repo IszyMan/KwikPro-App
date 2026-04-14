@@ -123,7 +123,6 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
       );
 
       if (status == "accepted") {
-        print("ACCEPT CLICKED");
         widget.onJobAccepted();
       }
 

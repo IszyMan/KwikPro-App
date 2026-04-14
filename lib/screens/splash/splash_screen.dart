@@ -8,7 +8,7 @@ import '../onboarding/welcome_screen.dart';
 import '../technician/technician_main_screen.dart';
 import '../user/user_main_screen.dart';
 import '../user/user_signup_screen.dart';
-import '../technician/technician_signup_screen.dart';
+import '../technician/signup/technician_signup_screen.dart';
 
 
 class SplashScreen extends ConsumerStatefulWidget {
