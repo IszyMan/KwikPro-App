@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kwikpro/models/technician_model.dart';
+import 'package:kwikpro/screens/user/technician_search_result_screen.dart';
 import 'package:kwikpro/widgets/technician_card.dart';
 
 class SearchTechnicianScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
   Map<String, dynamic>? currentRequest;
 
   final List<String> services = [
+    "Car Mechanic",
     "AC Repairer",
     "Plumber",
     "Generator Repairer",
@@ -36,169 +38,207 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
     "Fridge Repairer",
   ];
 
+  List<String> _selectedSkills = [];
+
+  static Map<String, List<String>> serviceSkills = {
+    "Car Mechanic": [
+      "Battery Services",
+      "Car Rewire",
+      "AC Repair",
+      "Brake Service",
+      "German Car",
+      "American Car",
+      "Japanese Car",
+
+    ],
+
+    "Electrician": [
+      "Wiring",
+      "Socket Fixing",
+      "Lighting Installation",
+    ],
+    "AC Repairer": [
+      "AC Gas Filling",
+      "AC Repair",
+      "AC Installation",
+      "Compressor Repair",
+    ],
+    "Plumber": [
+      "Leak Fixing",
+      "Drain Cleaning",
+      "Toilet Repair",
+      "Water Treatment",
+      "Pumping Machine",
+    ],
+    "Generator Repairer": [
+      "Generator Servicing",
+      "Engine Repair",
+      "Oil Change",
+      "Carburetor",
+    ],
+    "Fridge Repairer": [
+      "Freezer Repair"
+          "Gas Filling",
+      "Refrigerator Repair",
+
+    ],
+    "Painter": [
+      "Interior Painting",
+      "Exterior Painting",
+      "Wall Screeding",
+      "Wallpaper installation",
+    ]
+  };
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Find The Best Technicians Near You')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Form for search input
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: 'Select Service',
-                      border: OutlineInputBorder(),
-                    ),
-                    initialValue: _selectedService,
-                    items: services
-                        .map((s) =>
-                        DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedService = val),
-                    validator: (val) =>
-                    val == null ? 'Please select a service' : null,
-                  ),
-                  SizedBox(height: 15),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Form for search input
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
 
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Service Location (Where service is needed)',
-                      hintText: 'e.g. 12 Allen Avenue, Ikeja',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (val) => _serviceLocationAddress = val,
-                    validator: (val) =>
-                    val == null || val.isEmpty ? 'Enter service location' : null,
-                  ),
-                  SizedBox(height: 15),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Describe your issue',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                    onChanged: (val) => _issueDescription = val,
-                    validator: (val) => val == null || val.isEmpty
-                        ? 'Describe your issue'
-                        : null,
-                  ),
-                  SizedBox(height: 15),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          decoration: InputDecoration(
-                            labelText: 'Image URL (optional)',
-                            hintText: 'https://example.com/image.jpg',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              _imageUrl = val.trim();
-                            });
-                          },
-                        ),
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Service Location (Where service is needed)',
+                        hintText: 'e.g. 12 Allen Avenue, Ikeja',
+                        border: OutlineInputBorder(),
                       ),
-                      SizedBox(width: 4),
-                      if (_imageUrl.isNotEmpty)
-                        Container(
-                          height: 80,
-                          width: 80,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              _imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) =>
-                                  Icon(Icons.broken_image),
+                      onChanged: (val) => _serviceLocationAddress = val,
+                      validator: (val) =>
+                      val == null || val.isEmpty ? 'Enter service location' : null,
+                    ),
+                    SizedBox(height: 15),
+
+                    DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        labelText: 'Select Service',
+                        border: OutlineInputBorder(),
+                      ),
+                      initialValue: _selectedService,
+                      items: services
+                          .map((s) =>
+                          DropdownMenuItem(value: s, child: Text(s)))
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedService = val;
+                          _selectedSkills = [];
+                        });
+                      },
+                      validator: (val) =>
+                      val == null ? 'Please select a service' : null,
+                    ),
+
+                    SizedBox(height: 15),
+                    if (_selectedService != null &&
+                        serviceSkills.containsKey(_selectedService))
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 10),
+          
+                          Text(
+                            "Service Description",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
                           ),
+          
+                          ...serviceSkills[_selectedService!]!.map((skill) {
+                            final isSelected = _selectedSkills.contains(skill);
+          
+                            return CheckboxListTile(
+                              title: Text(skill),
+                              value: isSelected,
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selectedSkills.add(skill);
+                                  } else {
+                                    _selectedSkills.remove(skill);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ],
+                      ),
+          
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Describe your issue',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                      onChanged: (val) => _issueDescription = val,
+                      validator: (val) => val == null || val.isEmpty
+                          ? 'Describe your issue'
+                          : null,
+                    ),
+                    SizedBox(height: 15),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            decoration: InputDecoration(
+                              labelText: 'Image URL (optional)',
+                              hintText: 'https://example.com/image.jpg',
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (val) {
+                              setState(() {
+                                _imageUrl = val.trim();
+                              });
+                            },
+                          ),
                         ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _loading ? null : _searchTechnicians,
-                    child: _loading
-                        ? CircularProgressIndicator(color: Colors.white)
-                        : Text('Search'),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 20),
-
-            // Show results or searching state
-            Expanded(
-              child: !_hasSearched
-                  ? SizedBox() // Nothing shows before search
-                  : _isSearching
-                  ? Center(
-                child: Text(
-                  'Searching for available ${_selectedService ?? "technicians"}...',
+                        SizedBox(width: 4),
+                        if (_imageUrl.isNotEmpty)
+                          Container(
+                            height: 80,
+                            width: 80,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                _imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (c, e, s) =>
+                                    Icon(Icons.broken_image),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _loading ? null : _searchTechnicians,
+                      child: _loading
+                          ? CircularProgressIndicator(color: Colors.white)
+                          : Text('Search'),
+                    ),
+                  ],
                 ),
-              )
-                  : StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('technicians')
-                    .where('isOnline', isEqualTo: true)
-                    .where('isVerified', isEqualTo: true)
-                    .where('isSuspended', isEqualTo: false)
-                    .where('service', isEqualTo: _selectedService)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-
-                  final docs = snapshot.data!.docs;
-
-                  final nearby = docs
-                      .map((d) => TechnicianModel.fromMap(
-                      d.data() as Map<String, dynamic>))
-                      .where((tech) {
-                    if (tech.lat == null || tech.long == null) return false;
-                    if (userLat == null || userLng == null) return false;
-                    final dist = Geolocator.distanceBetween(
-                        userLat!, userLng!, tech.lat!, tech.long!);
-                    return dist / 1000 <= 10;
-                  }).toList();
-
-                  if (nearby.isEmpty) {
-                    return Center(
-                        child: Text(
-                            "No nearby technicians found for this service"));
-                  }
-
-                  return ListView.builder(
-                    itemCount: nearby.length,
-                    itemBuilder: (context, index) {
-                      return TechnicianCard(
-                        technician: nearby[index],
-                        userLat: userLat,
-                        userLng: userLng,
-                        serviceLocationAddress: _serviceLocationAddress,
-                        issueDescription: _issueDescription,
-                        imageUrl: _imageUrl,
-                      );
-                    },
-                  );
-                },
               ),
-            ),
-
-
-          ],
+          
+          
+          
+          
+          
+            ],
+          ),
         ),
       ),
     );
@@ -222,6 +262,21 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
         userLat = pos.latitude;
         userLng = pos.longitude;
       });
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TechnicianSearchResultsScreen(
+            service: _selectedService,
+            userLat: userLat,
+            userLng: userLng,
+            serviceLocationAddress: _serviceLocationAddress,
+            issueDescription: _issueDescription,
+            imageUrl: _imageUrl,
+            selectedSkills: _selectedSkills,
+          ),
+        ),
+      );
+
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text("Failed to get location")));

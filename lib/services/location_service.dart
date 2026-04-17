@@ -37,7 +37,9 @@ class LocationService {
         String address = "Unknown";
         if (placemarks.isNotEmpty) {
           final place = placemarks.first;
-          address = "${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
+          address = place.subLocality ?? place.locality ?? "Unknown";
+          //address = "${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
+
         }
 
         return {

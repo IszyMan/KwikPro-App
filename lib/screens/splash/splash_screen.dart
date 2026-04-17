@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kwikpro/screens/admin/admin_dashboard_screen.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/location_service.dart';
 import '../onboarding/account_type_screen.dart';
 import '../onboarding/welcome_screen.dart';
 import '../technician/technician_main_screen.dart';
@@ -41,6 +42,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     final techSnap = await db.collection('technicians').doc(firebaseUser.uid).get();
     final userSnap = await db.collection('users').doc(firebaseUser.uid).get();
+
+    //get user location when they signin
+    if (userSnap.exists) {
+      final data = userSnap.data();
+
+      if (data?['currentAddress'] == null || data?['currentAddress'] == '') {
+        final location = await LocationService().getCurrentLocation();
+
+        if (location != null) {
+          await db.collection('users').doc(firebaseUser.uid).update({
+            'currentAddress': location['address'],
+            'lat': location['lat'],
+            'lng': location['lng'],
+          });
+        }
+      }
+    }
 
 
     final userData = userSnap.data();

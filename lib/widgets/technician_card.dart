@@ -7,6 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:kwikpro/screens/user/active_job_screen.dart';
 import 'package:audioplayers/audioplayers.dart';
 
+import '../screens/user/view_technician_profile_screen.dart';
+
 class TechnicianCard extends StatefulWidget {
   final TechnicianModel technician;
   final double? userLat;
@@ -14,6 +16,8 @@ class TechnicianCard extends StatefulWidget {
   final String serviceLocationAddress;
   final String issueDescription;
   final String imageUrl;
+  final List<String> selectedSkills;
+
 
   const TechnicianCard({
     super.key,
@@ -21,6 +25,7 @@ class TechnicianCard extends StatefulWidget {
     required this.serviceLocationAddress,
     this.userLat,
     this.userLng,
+    required this.selectedSkills,
     required this.issueDescription,
     required this.imageUrl,
   });
@@ -207,13 +212,36 @@ class _TechnicianCardState extends State<TechnicianCard> {
   Widget _buildAvatar() {
     final image = widget.technician.profilePic;
 
-    return CircleAvatar(
-      radius: 25,
-      backgroundImage:
-      (image != null && image.isNotEmpty) ? NetworkImage(image) : null,
-      child: (image == null || image.isEmpty)
-          ? const Icon(Icons.person)
-          : null,
+    final isOnline = widget.technician.isOnline;
+
+    return Stack(
+      children: [
+        CircleAvatar(
+          radius: 25,
+          backgroundImage:
+          (image != null && image.isNotEmpty)
+              ? NetworkImage(image)
+              : null,
+          child: (image == null || image.isEmpty)
+              ? const Icon(Icons.person)
+              : null,
+        ),
+
+        //Status Dot
+        Positioned(
+          right: 0,
+          bottom: 35,
+          child: Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isOnline ? Colors.green : Colors.yellow,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -398,18 +426,49 @@ class _TechnicianCardState extends State<TechnicianCard> {
         );
 
       default:
-      // Check if last completed request has rating/review
+        Widget requestBtn;
+
         if (data.status == "completed") {
-          return ElevatedButton(
+          requestBtn = ElevatedButton(
             onPressed: () => _sendRequest(context),
             child: const Text("Book Again"),
           );
         } else {
-          return ElevatedButton(
+          requestBtn = ElevatedButton(
             onPressed: () => _sendRequest(context),
             child: const Text("Request"),
           );
         }
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            requestBtn,
+
+            const SizedBox(height: 6),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ViewTechnicianProfileScreen(
+                      technician: widget.technician,
+                      userLat: widget.userLat,
+                      userLng: widget.userLng,
+                      serviceLocationAddress: widget.serviceLocationAddress,
+                      issueDescription: widget.issueDescription,
+                      imageUrl: widget.imageUrl,
+                      selectedSkills: widget.selectedSkills,
+                    ),
+                  ),
+                );
+              },
+
+              child: const Text("View Profile"),
+            ),
+          ],
+        );
     }
   }
 

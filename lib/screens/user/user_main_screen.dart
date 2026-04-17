@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kwikpro/screens/user/search_technicians_screen.dart';
 import 'package:kwikpro/screens/user/user_contacts.dart';
 import 'package:kwikpro/screens/user/user_profile_screen.dart';
+import '../admin/customer_support.dart';
 import 'user_home_screen.dart';
 
 class UserMainScreen extends StatefulWidget {
@@ -12,12 +13,13 @@ class UserMainScreen extends StatefulWidget {
 }
 
 class _UserMainScreenState extends State<UserMainScreen> {
-  int _selectedIndex = 1;
+  int _selectedIndex = 2;
 
   final List<Widget> _screens = [
     UserHomeScreen(),
-    SearchTechnicianScreen(),
     UserContacts(),
+    SearchTechnicianScreen(),
+    CustomerSupport(),
     UserProfileScreen(),
 
   ];
@@ -41,11 +43,13 @@ class _UserMainScreenState extends State<UserMainScreen> {
           BottomNavigationBarItem(
               icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
+              icon: Icon(Icons.phone), label: 'My Jobs'),
+          BottomNavigationBarItem(
               icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.phone), label: 'Contacts'),
+              icon: Icon(Icons.support_agent), label: 'Support'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.home), label: 'Profile'),
+              icon: Icon(Icons.person), label: 'Profile'),
 
         ],
       ),

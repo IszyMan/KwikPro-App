@@ -2,6 +2,7 @@ class TechnicianModel {
   final String uid;
   final String name;
   final String service;
+  final List<String>? skills;
   final int yearsOfExperience;
   final String address;
 
@@ -24,6 +25,7 @@ class TechnicianModel {
     required this.uid,
     required this.name,
     required this.service,
+    this.skills,
     required this.yearsOfExperience,
     required this.address,
     this.lat,
@@ -46,6 +48,7 @@ class TechnicianModel {
       'uid': uid,
       'name': name,
       'service': service,
+      'skills': skills ?? [],
       'yearsOfExperience': yearsOfExperience,
       'location': address,
       'lat': lat,
@@ -69,6 +72,7 @@ class TechnicianModel {
       uid: map['uid'] ?? '',
       name: map['name'] ?? '',
       service: map['service'] ?? '',
+      skills: List<String>.from(map['skills'] ?? []),
       yearsOfExperience: (map['yearsOfExperience'] ?? 0) as int,
       address: map['location'] ?? '',
       lat: map['lat'] != null ? (map['lat'] as num).toDouble() : null,

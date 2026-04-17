@@ -30,13 +30,21 @@ class TechnicianSignupController
     saveDraft();
   }
 
-  void setBasicInfo(String name, String? service) {
-    state = state.copyWith(name: name, service: service);
+
+  void setName(String name) {
+    state = state.copyWith(name: name);
     saveDraft();
   }
 
   void setService(String? service) {
-    state = state.copyWith(service: service);
+    if (state.service != service) {
+      state = state.copyWith(service: service, skills: []);
+    }
+    saveDraft();
+  }
+
+  void setSkills(List<String> skills) {
+    state = state.copyWith(skills: skills);
     saveDraft();
   }
 
@@ -66,6 +74,7 @@ class TechnicianSignupController
       "step": state.step,
       "name": state.name,
       "service": state.service,
+      "skills": state.skills,
       "years": state.years,
       "address": state.address,
       "profileImage": state.profileImage,
@@ -87,6 +96,7 @@ class TechnicianSignupController
         step: decoded["step"],
         name: decoded["name"],
         service: decoded["service"],
+        skills: List<String>.from(decoded["skills"] ?? []),
         years: decoded["years"],
         address: decoded["address"],
         profileImage: decoded["profileImage"],
@@ -115,6 +125,7 @@ class TechnicianSignupController
         uid: auth.user!.uid,
         name: state.name,
         service: state.service!,
+        skills: state.skills,
         yearsOfExperience: state.years,
         address: state.address,
         lat: location?['lat'],
