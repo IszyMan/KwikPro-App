@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "648958053897",
+    "project_id": "kwikpro-app",
+    "storage_bucket": "kwikpro-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:648958053897:android:287e9ce50154ac8e36b2d8",
+        "android_client_info": {
+          "package_name": "com.example.kwikpro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrnWTKKc7dUK3L-xLVi2dwFuCN8cHCYKk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
