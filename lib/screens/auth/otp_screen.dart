@@ -40,7 +40,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     try {
       final authService = ref.read(authServiceProvider);
 
-      // VERIFY OTP
+      // 🔥 VERIFY OTP
       final result = await authService.verifyOtp(
         verificationId: widget.verificationId,
         smsCode: code,
@@ -52,12 +52,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         throw Exception("User is null");
       }
 
-      //  Sync Firebase user into provider
+      // ✅ IMPORTANT: Sync Firebase user into provider
       ref.read(authProvider.notifier).setUser(firebaseUser);
 
       setState(() => isLoading = false);
 
-      // ALWAYS go to SplashScreen (it decides everything)
+      // ✅ ALWAYS go to SplashScreen (it decides everything)
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => SplashScreen(role: widget.role)),
@@ -99,7 +99,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               maxLength: 6,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: "",
+                hintText: "123456",
               ),
             ),
 

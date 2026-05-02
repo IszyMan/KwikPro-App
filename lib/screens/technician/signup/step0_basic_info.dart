@@ -93,115 +93,115 @@ class _Step0BasicInfoState extends ConsumerState<Step0BasicInfo> {
     final selectedService =
     services.contains(state.service) ? state.service : null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Hi! Enter your name & Service type"),
-      ),
-      body: Padding(padding: EdgeInsetsGeometry.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-            // Name
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: "Full Name",
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (value) {
-                ref
-                    .read(technicianSignupController.notifier)
-                    .setName(value);
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            // Service dropdown
-            DropdownButtonFormField<String>(
-              value: selectedService,
-              items: services
-                  .map((s) => DropdownMenuItem(
-                value: s,
-                child: Text(s),
-              ))
-                  .toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  ref
-                      .read(technicianSignupController.notifier)
-                      .setService(val);
-                }
-              },
-              decoration: const InputDecoration(
-                labelText: "Select Service",
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Skills
-            if ((state.service ?? '').isNotEmpty &&
-                serviceSkills.containsKey(state.service))
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Select your skills",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-
-                  ...serviceSkills[state.service!]!.map((skill) {
-                    final selectedSkills = state.skills;
-
-                    return CheckboxListTile(
-                      title: Text(skill),
-                      value: selectedSkills.contains(skill),
-                      onChanged: (value) {
-                        final updatedSkills = [...selectedSkills];
-
-                        if (value == true) {
-                          if (!updatedSkills.contains(skill)) {
-                            updatedSkills.add(skill);
-                          }
-                        } else {
-                          updatedSkills.remove(skill);
-                        }
-
-                        ref
-                            .read(technicianSignupController.notifier)
-                            .setSkills(updatedSkills);
-                      },
-                    );
-                  }).toList(),
-                ],
-              ),
-
-            const SizedBox(height: 20),
-
-            // Continue button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  final notifier =
-                  ref.read(technicianSignupController.notifier);
-
-                  notifier.setName(nameController.text);
-                  notifier.setService(selectedService);
-
-                  notifier.nextStep();
-                },
-                child: const Text("Continue"),
-              ),
-            ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Progress Bar
+        LinearProgressIndicator(
+          value: state.step / 5,
+          minHeight: 6,
+          color: Colors.green,
+          backgroundColor: Colors.grey.shade300,
         ),
-      ),
-    );
+        const SizedBox(height: 20),
 
+        // Name
+        TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: "Full Name",
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) {
+            ref
+                .read(technicianSignupController.notifier)
+                .setName(value);
+          },
+        ),
+
+        const SizedBox(height: 20),
+
+        // Service dropdown
+        DropdownButtonFormField<String>(
+          value: selectedService,
+          items: services
+              .map((s) => DropdownMenuItem(
+            value: s,
+            child: Text(s),
+          ))
+              .toList(),
+          onChanged: (val) {
+            if (val != null) {
+              ref
+                  .read(technicianSignupController.notifier)
+                  .setService(val);
+            }
+          },
+          decoration: const InputDecoration(
+            labelText: "Select Service",
+            border: OutlineInputBorder(),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Skills
+        if ((state.service ?? '').isNotEmpty &&
+            serviceSkills.containsKey(state.service))
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Select your skills",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+
+              ...serviceSkills[state.service!]!.map((skill) {
+                final selectedSkills = state.skills;
+
+                return CheckboxListTile(
+                  title: Text(skill),
+                  value: selectedSkills.contains(skill),
+                  onChanged: (value) {
+                    final updatedSkills = [...selectedSkills];
+
+                    if (value == true) {
+                      if (!updatedSkills.contains(skill)) {
+                        updatedSkills.add(skill);
+                      }
+                    } else {
+                      updatedSkills.remove(skill);
+                    }
+
+                    ref
+                        .read(technicianSignupController.notifier)
+                        .setSkills(updatedSkills);
+                  },
+                );
+              }).toList(),
+            ],
+          ),
+
+        const SizedBox(height: 20),
+
+        // Continue button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              final notifier =
+              ref.read(technicianSignupController.notifier);
+
+              notifier.setName(nameController.text);
+              notifier.setService(selectedService);
+
+              notifier.nextStep();
+            },
+            child: const Text("Continue"),
+          ),
+        ),
+      ],
+    );
   }
 }
