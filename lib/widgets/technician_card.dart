@@ -168,6 +168,8 @@ class _TechnicianCardState extends State<TechnicianCard> {
                   _buildTechnicianInfo(distanceData),
                   const SizedBox(height: 6),
 
+                  _buildButton(context, data),
+
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: _buildStatusChip(data.status),
@@ -176,7 +178,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
               ),
             ),
 
-            _buildButton(context, data),
+
           ],
         ),
       ),
@@ -261,22 +263,13 @@ class _TechnicianCardState extends State<TechnicianCard> {
                 widget.technician.name,
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 18),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 5),
-            _buildVerifiedBadge(),
-            const SizedBox(height: 6),
-
-
-
+           _buildVerifiedBadge(),
 
           ],
         ),
-
-        Text(widget.technician.service),
-        Text(widget.technician.address,
-            style: const TextStyle(color: Colors.grey)),
 
         Text(
           "jobs completed: $completedJobs",
@@ -440,12 +433,12 @@ class _TechnicianCardState extends State<TechnicianCard> {
           );
         }
 
-        return Column(
+        return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             requestBtn,
 
-            const SizedBox(height: 6),
+            const SizedBox(width: 6),
 
             ElevatedButton(
               onPressed: () {

@@ -49,7 +49,7 @@ class _TechnicianSearchResultsScreenState
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text("Search Results for all ${widget.service}s near you")),
+      appBar: AppBar(title: Text("${widget.service}s available near you")),
       body: StreamBuilder<QuerySnapshot>(
         stream: query.snapshots(),
         builder: (context, snapshot) {
