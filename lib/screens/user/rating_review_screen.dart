@@ -1,0 +1,178 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:kwikpro/models/technician_model.dart';
+import 'package:kwikpro/screens/user/review_success_screen.dart';
+
+class RatingReviewScreen extends StatefulWidget {
+  final TechnicianModel technician;
+  final String requestId;
+
+  const RatingReviewScreen({
+    super.key,
+    required this.technician,
+    required this.requestId,
+  });
+
+  @override
+  State<RatingReviewScreen> createState() => _RatingReviewScreenState();
+}
+
+class _RatingReviewScreenState extends State<RatingReviewScreen> {
+  final TextEditingController reviewController = TextEditingController();
+
+  double priceRating = 3;
+  double serviceRating = 3;
+  bool loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    double overall = (priceRating + serviceRating) / 2;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Rate Technician")),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            TextField(
+              controller: reviewController,
+              decoration: const InputDecoration(
+                labelText: "Write review",
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+
+            const SizedBox(height: 20),
+
+            _star("Price", priceRating, (v) {
+              setState(() => priceRating = v);
+            }),
+
+            _star("Service", serviceRating, (v) {
+              setState(() => serviceRating = v);
+            }),
+
+            const SizedBox(height: 20),
+
+            Text("Overall: ${overall.toStringAsFixed(1)}"),
+
+            const SizedBox(height: 30),
+
+            ElevatedButton(
+              onPressed: loading ? null : _submit,
+              child: loading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text("Submit & Complete Job"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _star(String label, double rating, Function(double) onChange) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label),
+        Row(
+          children: List.generate(5, (i) {
+            return IconButton(
+              icon: Icon(
+                Icons.star,
+                color: i < rating ? Colors.amber : Colors.grey,
+              ),
+              onPressed: () => onChange((i + 1).toDouble()),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _submit() async {
+    setState(() => loading = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser!;
+
+      final overall = (priceRating + serviceRating) / 2;
+
+      // 1. Save review
+      await FirebaseFirestore.instance
+          .collection('reviews')
+          .doc(widget.requestId)
+          .set({
+        "userId": user.uid,
+        "technicianId": widget.technician.uid,
+        "requestId": widget.requestId,
+        "review": reviewController.text.trim(),
+        "rating": overall,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      // 2. Complete job
+      await FirebaseFirestore.instance
+          .collection('requests')
+          .doc(widget.requestId)
+          .update({
+        "status": "completed",
+        "timeline.completedAt": FieldValue.serverTimestamp(),
+      });
+
+      // 3. Notify technician
+      await FirebaseFirestore.instance.collection("notifications").add({
+        "userId": widget.technician.uid,
+        "title": "Job Completed",
+        "body": "User confirmed job completion",
+        "requestId": widget.requestId,
+        "read": false,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      // 4. Update stats
+      final techRef = FirebaseFirestore.instance
+          .collection('technicians')
+          .doc(widget.technician.uid);
+
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        final snap = await tx.get(techRef);
+        final data = snap.data() as Map<String, dynamic>;
+
+        double avg = (data['avgRating'] ?? 0).toDouble();
+        int total = (data['totalReviews'] ?? 0);
+
+        double newAvg = ((avg * total) + overall) / (total + 1);
+
+        tx.update(techRef, {
+          "avgRating": newAvg,
+          "totalReviews": total + 1,
+        });
+      });
+
+      if (!mounted) return;
+
+      setState(() => loading = false);
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const ReviewSuccessScreen(),
+        ),
+      );
+    } catch (e) {
+      debugPrint("REVIEW ERROR: $e");
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const ReviewSuccessScreen(),
+          ),
+        );
+      }
+    }
+  }
+}

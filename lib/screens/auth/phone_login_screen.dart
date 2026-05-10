@@ -22,7 +22,24 @@ class _PhoneLoginScreenState
   bool isLoading = false;
 
   void _sendOtp() async {
-    final phone = phoneController.text.trim();
+    String phone = phoneController.text.trim();
+
+        phone = phone.replaceAll(' ', '');
+
+        if (phone.startsWith('0')) {
+          phone = '+234${phone.substring(1)}';
+        }
+
+        else if (phone.startsWith('234')) {
+          phone = '+$phone';
+        }
+
+        else if (!phone.startsWith('+234')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Enter valid Nigerian number")),
+          );
+          return;
+        }
 
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -50,8 +50,20 @@ class _TechnicianCardState extends State<TechnicianCard> {
           .doc(widget.technician.uid)
           .get();
 
+      int completedJobs = 0;
+
+      final reviewSnap = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('technicianId', isEqualTo: widget.technician.uid)
+          .get();
+
+      completedJobs = reviewSnap.docs.length;
+
       if (doc.exists) {
-        techData = doc.data();
+        setState(() {
+          techData = doc.data();
+          techData!['completedJobs'] = completedJobs;
+        });
       }
     } catch (e) {
       print("TECH LOAD ERROR: $e");
@@ -75,13 +87,27 @@ class _TechnicianCardState extends State<TechnicianCard> {
       if (!mounted) return false;
 
       if (countdown <= 0) {
-        isCounting = false;
+        setState(() {
+          isCounting = false;
+        });
         return false;
       }
 
       setState(() => countdown--);
       return isCounting;
     });
+  }
+
+  void _openActiveJob(String requestId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ActiveJobScreen(
+          technician: widget.technician,
+          requestId: requestId,
+        ),
+      ),
+    );
   }
 
   @override
@@ -141,8 +167,12 @@ class _TechnicianCardState extends State<TechnicianCard> {
       audioPlayer.play(AssetSource('notification.mp3'));
     }
 
-    if (status == "pending") {
+    if (status == "pending" && lastStatus != "pending") {
       startTimer();
+    }
+
+    if (status == "accepted" || status == "rejected") {
+      isCounting = false;
     }
 
     lastStatus = status;
@@ -168,12 +198,9 @@ class _TechnicianCardState extends State<TechnicianCard> {
                   _buildTechnicianInfo(distanceData),
                   const SizedBox(height: 6),
 
-                  _buildButton(context, data),
-
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _buildStatusChip(data.status),
-                  ),
+                  _buildStatusChip(data.status),
+                  const SizedBox(height: 8),
+                  _buildActionRow(context, data),
                 ],
               ),
             ),
@@ -272,7 +299,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
         ),
 
         Text(
-          "jobs completed: $completedJobs",
+          "Completed jobs: $completedJobs",
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
@@ -321,18 +348,21 @@ class _TechnicianCardState extends State<TechnicianCard> {
 
 
   Widget _buildStatusChip(String status) {
+    final pendingText =
+        "⏳ Waiting For Technician • ${countdown}s";
     final map = {
-      "pending": ("⏳ Waiting For Technician", Colors.blue.shade200),
-      "accepted": ("✅ Accepted", Colors.green.shade200),
-      "started": ("🛠️ In Progress", Colors.purple.shade200),
-      "completed": ("✅ Completed", Colors.green.shade300),
-      "rejected": ("❌ Declined", Colors.red.shade200),
-      "cancelled": ("⚠️ No Reply", Colors.orange.shade200),
+      "pending": (pendingText, Colors.blue),
+      "accepted": ("✅ Accepted", Colors.green),
+      "onTheWay": ("🚗 On The Way", Colors.orange),
+      "arrived": ("📍 Arrived", Colors.teal),
+      "inProgress": ("🛠️ In Progress", Colors.purple),
+      "completionRequested": ("⏳ Awaiting Confirmation", Colors.amber),
+      "completed": ("✅ Completed", Colors.green),
+      "rejected": ("❌ Declined", Colors.red),
     };
 
-    if (!map.containsKey(status)) return const SizedBox();
-
-    final item = map[status]!;
+    final item = map[status];
+    if (item == null) return const SizedBox();
 
     return Chip(
       key: ValueKey(status),
@@ -342,105 +372,23 @@ class _TechnicianCardState extends State<TechnicianCard> {
   }
 
 
-  Widget _buildButton(BuildContext context, _RequestData data) {
-    switch (data.status) {
-      case "pending":
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton(
-              onPressed: null,
-              child: Text("Waiting... $countdown s"),
+  Widget _buildActionRow(BuildContext context, _RequestData data) {
+    final id = data.requestId;
+    final status = data.status;
+
+    // ===== NO REQUEST =====
+    if (id == null) {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _sendRequest(context),
+              child: const Text("Request"),
             ),
-            const SizedBox(height: 6),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.close),
-              label: const Text("Cancel"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              onPressed: data.requestId == null
-                  ? null
-                  : () => _cancelRequest(data.requestId!),
-            ),
-          ],
-        );
-
-      case "accepted":
-        return ElevatedButton(
-          style:
-          ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          onPressed: () {
-            if (data.requestId == null) return;
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ActiveJobScreen(
-                  technician: widget.technician,
-                  requestId: data.requestId!,
-                ),
-              ),
-            );
-          },
-          child: const Text("View Technician"),
-        );
-
-      case "rejected":
-      case "cancelled":
-        return ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-            data.status == "rejected" ? Colors.red : Colors.orange,
           ),
-          onPressed: () => _sendRequest(context),
-          child: Text(data.status == "rejected"
-              ? "Retry"
-              : "Try Again"),
-        );
-
-      case "started":
-        return ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade200),
-          onPressed: () {
-            if (data.requestId == null) return;
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ActiveJobScreen(
-                  technician: widget.technician,
-                  requestId: data.requestId!,
-                ),
-              ),
-            );
-          },
-          child: const Text("View Job In Progress"),
-        );
-
-      default:
-        Widget requestBtn;
-
-        if (data.status == "completed") {
-          requestBtn = ElevatedButton(
-            onPressed: () => _sendRequest(context),
-            child: const Text("Book Again"),
-          );
-        } else {
-          requestBtn = ElevatedButton(
-            onPressed: () => _sendRequest(context),
-            child: const Text("Request"),
-          );
-        }
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            requestBtn,
-
-            const SizedBox(width: 6),
-
-            ElevatedButton(
+          const SizedBox(width: 10),
+          Expanded(
+            child: OutlinedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -457,12 +405,125 @@ class _TechnicianCardState extends State<TechnicianCard> {
                   ),
                 );
               },
-
-              child: const Text("View Profile"),
+              child: const Text("Profile"),
             ),
-          ],
-        );
+          ),
+        ],
+      );
     }
+
+    // ===== PENDING =====
+    if (status == "pending") {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () => _cancelRequest(id),
+              child: const Text("Cancel"),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ViewTechnicianProfileScreen(
+                      technician: widget.technician,
+                      userLat: widget.userLat,
+                      userLng: widget.userLng,
+                      serviceLocationAddress: widget.serviceLocationAddress,
+                      issueDescription: widget.issueDescription,
+                      imageUrl: widget.imageUrl,
+                      selectedSkills: widget.selectedSkills,
+                    ),
+                  ),
+                );
+              },
+              child: const Text("Profile"),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ===== ACTIVE JOB =====
+    if (status == "accepted" ||
+        status == "onTheWay" ||
+        status == "arrived" ||
+        status == "inProgress" ||
+        status == "completionRequested") {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _openActiveJob(id!),
+              child: const Text("View Job"),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ViewTechnicianProfileScreen(
+                      technician: widget.technician,
+                      userLat: widget.userLat,
+                      userLng: widget.userLng,
+                      serviceLocationAddress: widget.serviceLocationAddress,
+                      issueDescription: widget.issueDescription,
+                      imageUrl: widget.imageUrl,
+                      selectedSkills: widget.selectedSkills,
+                    ),
+                  ),
+                );
+              },
+              child: const Text("Profile"),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ===== COMPLETED / REJECTED =====
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => _sendRequest(context),
+            child: const Text("Book Again"),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ViewTechnicianProfileScreen(
+                    technician: widget.technician,
+                    userLat: widget.userLat,
+                    userLng: widget.userLng,
+                    serviceLocationAddress: widget.serviceLocationAddress,
+                    issueDescription: widget.issueDescription,
+                    imageUrl: widget.imageUrl,
+                    selectedSkills: widget.selectedSkills,
+                  ),
+                ),
+              );
+            },
+            child: const Text("Profile"),
+          ),
+        ),
+      ],
+    );
   }
 
 
@@ -471,6 +532,29 @@ class _TechnicianCardState extends State<TechnicianCard> {
     if (user == null) return;
 
     startTimer();
+
+    final existing = await FirebaseFirestore.instance
+        .collection('requests')
+        .where('userId', isEqualTo: user.uid)
+        .where('technicianId', isEqualTo: widget.technician.uid)
+        .where('status', whereIn: [
+      "pending",
+      "accepted",
+      "onTheWay",
+      "arrived",
+      "inProgress",
+      "completionRequested",
+    ])
+        .get();
+
+    if (existing.docs.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You already have an active request"),
+        ),
+      );
+      return;
+    }
 
     final docRef =
     await FirebaseFirestore.instance.collection('requests').add({
@@ -493,8 +577,14 @@ class _TechnicianCardState extends State<TechnicianCard> {
     Future.delayed(const Duration(seconds: 30), () async {
       final doc = await docRef.get();
 
-      if (doc.exists && doc['status'] == 'pending') {
-        await docRef.update({"status": "cancelled"});
+      if (!doc.exists) return;
+
+      final currentStatus = doc.data()?['status'];
+
+      if (currentStatus == "pending") {
+        await docRef.update({
+          "status": "rejected",
+        });
       }
     });
   }
@@ -503,7 +593,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
     await FirebaseFirestore.instance
         .collection('requests')
         .doc(requestId)
-        .update({"status": "cancelled"});
+        .update({"status": "rejected"});
 
     setState(() => isCounting = false);
   }
@@ -523,4 +613,6 @@ class _DistanceData {
 
   _DistanceData({required this.distance, required this.eta});
 }
+
+
 

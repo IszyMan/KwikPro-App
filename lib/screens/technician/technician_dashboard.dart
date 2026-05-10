@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kwikpro/screens/technician/technician_accepted_jobs_screen.dart';
-import 'incoming_requests_screen.dart';
+import 'package:kwikpro/screens/technician/technician_jobs_screen.dart';
 import 'completed_jobs_screen.dart';
 
 class TechnicianDashboard extends StatefulWidget {
@@ -35,8 +34,7 @@ class _TechnicianDashboardState extends State<TechnicianDashboard>
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: "Incoming Requests"),
-            Tab(text: "Accepted Jobs"),
+            Tab(text: "Jobs Requests"),
             Tab(text: "Completed Jobs"),
           ],
         ),
@@ -45,8 +43,7 @@ class _TechnicianDashboardState extends State<TechnicianDashboard>
         physics: AlwaysScrollableScrollPhysics(),
         controller: _tabController,
         children: [
-          IncomingRequestsScreen(onJobAccepted: goToAcceptedJobs),
-          TechnicianActiveJobsScreen(),
+          TechnicianJobsScreen(),
           CompletedJobsScreen(),
         ],
       ),

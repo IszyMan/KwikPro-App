@@ -1,10 +1,13 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:kwikpro/models/technician_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:kwikpro/screens/user/technician_search_result_screen.dart';
-import 'package:kwikpro/widgets/technician_card.dart';
+import 'dart:convert';
+import 'dart:io';
+
+
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 class SearchTechnicianScreen extends StatefulWidget {
   const SearchTechnicianScreen({super.key});
@@ -17,11 +20,19 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedService;
   String _serviceLocationAddress = '';
+
+  final TextEditingController _issueController = TextEditingController();
   String _issueDescription = '';
-  String _imageUrl = '';
+
   bool _loading = false;
   bool _isSearching = false;
   bool _hasSearched = false;
+
+  String _imageUrl = '';
+  XFile? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
+  static const cloudName = 'dcresvgii';
+  static const uploadPreset = 'unsigned_preset';
 
   double? userLat;
   double? userLng;
@@ -89,6 +100,82 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
       "Wallpaper installation",
     ]
   };
+
+  Future<String?> uploadToCloudinary(XFile file) async {
+    final uri = Uri.parse(
+      'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+    );
+
+    final bytes = await file.readAsBytes();
+
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = uploadPreset
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: file.name,
+        ),
+      );
+
+    final response = await request.send();
+
+    final responseBody = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(responseBody);
+      return data['secure_url'];
+    } else {
+      print(responseBody);
+      return null;
+    }
+  }
+  Future<void> pickImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(Icons.camera_alt),
+            title: Text("Take Picture"),
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+          ListTile(
+            leading: Icon(Icons.photo),
+            title: Text("Choose From Gallery"),
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+        ],
+      ),
+    );
+
+    if (source == null) return;
+
+    final pickedFile = await _picker.pickImage(source: source);
+
+    if (pickedFile == null) return;
+
+    setState(() {
+      _selectedImage = pickedFile;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Uploading image...")),
+    );
+
+    final uploadedUrl = await uploadToCloudinary(pickedFile);
+
+    if (uploadedUrl != null) {
+      setState(() {
+        _imageUrl = uploadedUrl;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Image uploaded")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,60 +253,80 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
                                   } else {
                                     _selectedSkills.remove(skill);
                                   }
+
+                                  // Auto-fill description box
+                                  _issueController.text = _selectedSkills.join(', ');
+
+                                  // Update issue description variable too
+                                  _issueDescription = _issueController.text;
                                 });
                               },
                             );
                           }).toList(),
                         ],
                       ),
-          
+
                     TextFormField(
+                      controller: _issueController,
                       decoration: InputDecoration(
                         labelText: 'Describe your issue',
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 3,
                       onChanged: (val) => _issueDescription = val,
-                      validator: (val) => val == null || val.isEmpty
-                          ? 'Describe your issue'
-                          : null,
+                      validator: (val) {
+                        if ((_selectedSkills.isEmpty) &&
+                            (val == null || val.trim().isEmpty)) {
+                          return 'Describe your issue';
+                        }
+
+                        return null;
+                      },
                     ),
                     SizedBox(height: 15),
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'Image URL (optional)',
-                              hintText: 'https://example.com/image.jpg',
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (val) {
-                              setState(() {
-                                _imageUrl = val.trim();
-                              });
-                            },
+                        Text(
+                          "Upload Job Image (Optional)",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 4),
-                        if (_imageUrl.isNotEmpty)
+
+                        SizedBox(height: 10),
+
+                        if (_selectedImage != null)
                           Container(
-                            height: 80,
-                            width: 80,
+                            height: 140,
+                            width: double.infinity,
+                            clipBehavior: Clip.hardEdge,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.grey),
                             ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                _imageUrl,
+                              borderRadius: BorderRadius.circular(12),
+                              child: kIsWeb
+                              ? Image.network(
+                              _selectedImage!.path,
                                 fit: BoxFit.cover,
-                                errorBuilder: (c, e, s) =>
-                                    Icon(Icons.broken_image),
+                                )
+                                    : Image.file(
+                                File(_selectedImage!.path),
+                                fit: BoxFit.cover,
+                                ),
                               ),
                             ),
-                          ),
+
+
+                        SizedBox(height: 10),
+
+                        ElevatedButton.icon(
+                          onPressed: pickImage,
+                          icon: Icon(Icons.camera_alt),
+                          label: Text("Take / Upload Picture"),
+                        ),
                       ],
                     ),
                     SizedBox(height: 20),

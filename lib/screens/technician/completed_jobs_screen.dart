@@ -32,7 +32,7 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
     setState(() => isLoading = true);
 
     try {
-      // 1️⃣ Fetch all reviews for stats
+      // Fetch all reviews for stats
       final allReviewsSnap = await FirebaseFirestore.instance
           .collection('reviews')
           .where('technicianId', isEqualTo: technicianId)
@@ -67,7 +67,7 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
 
       final lastReviews = last10Snap.docs;
 
-      // 3️⃣ Fetch related job data
+      //  Fetch related job data
       final requestIds = lastReviews.map((r) => r['requestId'] as String).toList();
       Map<String, Map<String, dynamic>> requestMap = {};
 
@@ -82,7 +82,7 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
         }
       }
 
-      // 4️⃣ Merge reviews with jobs
+      //  Merge reviews with jobs
       reviewsWithJobs = lastReviews.map((r) {
         final reviewData = r.data();
         final jobData = requestMap[r['requestId']] ?? {};

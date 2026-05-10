@@ -9,7 +9,8 @@ class RequestModel {
   final double userLat;
   final double userLng;
   final String status;
-  final DateTime createdAt;
+  final double? price;
+  final Map<String, dynamic> timeline;
 
   RequestModel({
     required this.id,
@@ -22,7 +23,8 @@ class RequestModel {
     required this.userLat,
     required this.userLng,
     required this.status,
-    required this.createdAt,
+    this.price,
+    required this.timeline,
   });
 
   Map<String, dynamic> toMap() {
@@ -36,7 +38,8 @@ class RequestModel {
       "userLat": userLat,
       "userLng": userLng,
       "status": status,
-      "createdAt": createdAt,
+      "price": price,
+      "timeline": timeline,
     };
   }
 }
