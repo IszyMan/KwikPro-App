@@ -109,7 +109,12 @@ class _RatingReviewScreenState extends State<RatingReviewScreen> {
         "technicianId": widget.technician.uid,
         "requestId": widget.requestId,
         "review": reviewController.text.trim(),
+
+        // ratings
         "rating": overall,
+        "priceRating": priceRating,
+        "serviceRating": serviceRating,
+
         "createdAt": FieldValue.serverTimestamp(),
       });
 
@@ -139,16 +144,36 @@ class _RatingReviewScreenState extends State<RatingReviewScreen> {
 
       await FirebaseFirestore.instance.runTransaction((tx) async {
         final snap = await tx.get(techRef);
+
         final data = snap.data() as Map<String, dynamic>;
 
-        double avg = (data['avgRating'] ?? 0).toDouble();
-        int total = (data['totalReviews'] ?? 0);
+        double avgRating = (data['avgRating'] ?? 0).toDouble();
+        double avgPriceRating =
+        (data['avgPriceRating'] ?? 0).toDouble();
 
-        double newAvg = ((avg * total) + overall) / (total + 1);
+        double avgServiceRating =
+        (data['avgServiceRating'] ?? 0).toDouble();
+
+        int totalReviews = (data['totalReviews'] ?? 0);
+
+        // new averages
+        double newAvgRating =
+            ((avgRating * totalReviews) + overall) /
+                (totalReviews + 1);
+
+        double newAvgPrice =
+            ((avgPriceRating * totalReviews) + priceRating) /
+                (totalReviews + 1);
+
+        double newAvgService =
+            ((avgServiceRating * totalReviews) + serviceRating) /
+                (totalReviews + 1);
 
         tx.update(techRef, {
-          "avgRating": newAvg,
-          "totalReviews": total + 1,
+          "avgRating": newAvgRating,
+          "avgPriceRating": newAvgPrice,
+          "avgServiceRating": newAvgService,
+          "totalReviews": totalReviews + 1,
         });
       });
 
@@ -166,12 +191,6 @@ class _RatingReviewScreenState extends State<RatingReviewScreen> {
     } finally {
       if (mounted) {
         setState(() => loading = false);
-
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const ReviewSuccessScreen(),
-          ),
-        );
       }
     }
   }

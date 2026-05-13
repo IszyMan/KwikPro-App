@@ -43,7 +43,7 @@ class _TechnicianMainScreenState extends State<TechnicianMainScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.work),
-            label: 'Dashboard',
+            label: 'Requests',
           ),
 
           BottomNavigationBarItem(

@@ -11,7 +11,7 @@ void main() async {
   if(kIsWeb) {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-          apiKey: "",
+          apiKey: "AIzaSyCIwcdsN-VY2cutAiDD-9HcrdIOhvNOVLE",
           authDomain: "kwikpro-app.firebaseapp.com",
           appId: "1:648958053897:web:99a585daf09aad6d36b2d8",
           storageBucket: "kwikpro-app.firebasestorage.app",

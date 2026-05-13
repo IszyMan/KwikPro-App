@@ -43,30 +43,51 @@ class _TechnicianCardState extends State<TechnicianCard> {
   Map<String, dynamic>? techData;
   bool isTechLoading = true;
 
+  double normalizeRating(double rating) {
+    return (rating * 2).ceil() / 2;
+  }
+
   Future<void> _loadTechnician() async {
     try {
-      final doc = await FirebaseFirestore.instance
+      final techDoc = FirebaseFirestore.instance
           .collection('technicians')
           .doc(widget.technician.uid)
           .get();
 
-      int completedJobs = 0;
-
-      final reviewSnap = await FirebaseFirestore.instance
+      final reviewsSnap = FirebaseFirestore.instance
           .collection('reviews')
           .where('technicianId', isEqualTo: widget.technician.uid)
           .get();
 
-      completedJobs = reviewSnap.docs.length;
+      final results = await Future.wait([techDoc, reviewsSnap]);
+
+      final doc = results[0] as DocumentSnapshot;
+      final reviewSnap = results[1] as QuerySnapshot;
+
+      final reviews = reviewSnap.docs;
+
+      final completedJobs = reviews.length;
+
+      double totalRating = 0;
+
+      for (final r in reviews) {
+        final data = r.data() as Map<String, dynamic>;
+        totalRating += (data['rating'] ?? 0).toDouble();
+      }
+
+      final avgRating = completedJobs == 0 ? 0 : totalRating / completedJobs;
 
       if (doc.exists) {
-        setState(() {
-          techData = doc.data();
-          techData!['completedJobs'] = completedJobs;
-        });
+        techData = doc.data() as Map<String, dynamic>;
       }
+
+      techData ??= {};
+
+      techData!['completedJobs'] = completedJobs;
+      techData!['avgRating'] = avgRating;
+
     } catch (e) {
-      print("TECH LOAD ERROR: $e");
+      debugPrint("TECH LOAD ERROR: $e");
     }
 
     if (mounted) {
@@ -140,6 +161,12 @@ class _TechnicianCardState extends State<TechnicianCard> {
       builder: (context, snapshot) {
         final data = _extractRequestData(snapshot);
         _handleSideEffects(data.status);
+
+        if (isTechLoading) {
+          return const Center(
+            child: Text("Fetching technicians..."),
+          );
+        }
 
         return _buildCard(context, data);
       },
@@ -277,8 +304,12 @@ class _TechnicianCardState extends State<TechnicianCard> {
 
   Widget _buildTechnicianInfo(_DistanceData d) {
     final completedJobs = techData?['completedJobs'] ?? 0;
-    final avgPrice = (techData?['avgPriceRating'] ?? 0).toDouble();
-    final avgService = (techData?['avgServiceRating'] ?? 0).toDouble();
+
+    final avgRating =
+        (techData?['avgRating'] as num?)
+            ?.toDouble() ??
+            0;
+
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,13 +340,23 @@ class _TechnicianCardState extends State<TechnicianCard> {
 
         const SizedBox(height: 4),
 
-        Row(
-          children: [
-            const Icon(Icons.star, size: 16, color: Colors.amber),
-            Text("Price: ${avgPrice.toStringAsFixed(1)}"),
-            const SizedBox(width: 3),
-            Text("Service: ${avgService.toStringAsFixed(1)}"),
-          ],
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.amber.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "${normalizeRating(avgRating).toStringAsFixed(1)}",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 4),
+              ..._buildStars(avgRating),
+            ],
+          ),
         ),
 
         const SizedBox(height: 6),
@@ -597,6 +638,28 @@ class _TechnicianCardState extends State<TechnicianCard> {
 
     setState(() => isCounting = false);
   }
+
+
+  List<Widget> _buildStars(double rating) {
+    final normalized = normalizeRating(rating);
+    List<Widget> stars = [];
+
+    int fullStars = normalized.floor();
+    bool hasHalfStar = (normalized - fullStars) == 0.5;
+
+    for (int i = 0; i < fullStars; i++) {
+      stars.add(const Icon(Icons.star, size: 16, color: Colors.amber));
+    }
+
+    if (hasHalfStar) {
+      stars.add(const Icon(Icons.star_half, size: 16, color: Colors.amber));
+    }
+
+    return stars;
+  }
+
+
+
 }
 
 /// ---------------- HELPER CLASSES ----------------

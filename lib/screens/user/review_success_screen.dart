@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:kwikpro/screens/user/user_home_screen.dart";
+import "package:kwikpro/screens/user/user_main_screen.dart";
 
 class ReviewSuccessScreen extends StatelessWidget {
   const ReviewSuccessScreen({super.key});
@@ -22,7 +22,7 @@ class ReviewSuccessScreen extends StatelessWidget {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => UserHomeScreen(),));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => UserMainScreen(),));
               },
               child: const Text("Back to Home"),
             )

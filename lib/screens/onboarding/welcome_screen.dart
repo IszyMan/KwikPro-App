@@ -23,6 +23,8 @@ class WelcomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Spacer(),
+            Icon(Icons.build_circle_outlined, size: 100, color: Colors.blue),
+            SizedBox(height: 32),
 
             // App Title
             const Text(
