@@ -50,23 +50,47 @@ class Step3Uploads extends ConsumerWidget {
 
     ///  Pick + preview + upload
     Future pickAndUpload(String type) async {
+
       final pickedFile =
-      await picker.pickImage(source: ImageSource.gallery);
+      await picker.pickImage(
+        source: ImageSource.gallery,
+      );
+
       if (pickedFile == null) return;
 
-      ///  STEP 1: Instant preview (local)
+      final localPath = pickedFile.path;
+
+      /// LOCAL PREVIEW
       ref
           .read(technicianSignupController.notifier)
-          .setImage(type: type, path: pickedFile.path);
+          .addImage(
+        type: type,
+        path: localPath,
+      );
 
-      /// STEP 2: Upload in background
-      final url = await uploadToCloudinary(pickedFile);
+      /// UPLOAD
+      final url =
+      await uploadToCloudinary(pickedFile);
 
-      /// STEP 3: Replace with cloud URL
       if (url != null) {
+
+        /// REMOVE LOCAL
         ref
-            .read(technicianSignupController.notifier)
-            .setImage(type: type, path: url);
+            .read(
+            technicianSignupController.notifier)
+            .removeImage(
+          type: type,
+          path: localPath,
+        );
+
+        /// ADD CLOUD
+        ref
+            .read(
+            technicianSignupController.notifier)
+            .addImage(
+          type: type,
+          path: url,
+        );
       }
     }
 
@@ -82,72 +106,108 @@ class Step3Uploads extends ConsumerWidget {
     }
 
     ///  UI CARD WITH REMOVE BUTTON
-    Widget imageCard(String label, String type, String? path) {
+    Widget imageGallery({
+      required String label,
+      required String type,
+      required List<String> images,
+    }) {
+
       return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(label,
-                style:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 10),
 
-          Stack(
-            children: [
-              Container(
-                height: 150,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.grey[200],
-                  image: path != null
-                      ? DecorationImage(
-                    image: getImage(path)!,
-                    fit: BoxFit.cover,
-                  )
-                      : null,
-                ),
-                child: path == null
-                    ? const Center(
-                  child: Icon(Icons.image, size: 40, color: Colors.grey),
-                )
-                    : null,
-              ),
+          const SizedBox(height: 12),
 
-              ///  REMOVE BUTTON
-              if (path != null)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: () {
-                      ref
-                          .read(technicianSignupController.notifier)
-                          .setImage(type: type, path: '');
-                    },
+          SizedBox(
+            height: 120,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: images.length + 1,
+              itemBuilder: (context, index) {
+
+                /// ADD BUTTON
+                if (index == images.length) {
+                  return GestureDetector(
+                    onTap: () => pickAndUpload(type),
                     child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.black,
-                        shape: BoxShape.circle,
+                      width: 120,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.all(6),
-                      child: const Icon(Icons.close,
-                          color: Colors.white, size: 16),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo),
+                          SizedBox(height: 8),
+                          Text("Add Image"),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-            ],
+                  );
+                }
+
+                final path = images[index];
+
+                return Stack(
+                  children: [
+
+                    Container(
+                      width: 120,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        image: DecorationImage(
+                          image: getImage(path)!,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+
+                    Positioned(
+                      top: 6,
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: () {
+
+                          ref
+                              .read(
+                              technicianSignupController.notifier)
+                              .removeImage(
+                            type: type,
+                            path: path,
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            color: Colors.black,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 15,
+                          ),
+                        ),
+                      ),
+                    )
+                  ],
+                );
+              },
+            ),
           ),
 
-          const SizedBox(height: 10),
-
-          ElevatedButton(
-            onPressed: () => pickAndUpload(type),
-            child: Text(path == null ? "Upload Image" : "Change Image"),
-          ),
-
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
         ],
       );
     }
@@ -174,17 +234,16 @@ class Step3Uploads extends ConsumerWidget {
           child: Column(
             children: [
               ///  TOOLS IMAGE
-              imageCard(
-                "Your Working Tools 🔧",
-                "tools",
-                state.toolsImage,
+              imageGallery(
+                label: "Your Working Tools 🔧",
+                type: "tools",
+                images: state.toolsImages,
               ),
 
-              /// WORK IMAGE
-              imageCard(
-                "Images of Your Previous Work",
-                "work",
-                state.workImage,
+              imageGallery(
+                label: "Images of Previous Work",
+                type: "work",
+                images: state.workImages,
               ),
 
               SizedBox(height: 10),

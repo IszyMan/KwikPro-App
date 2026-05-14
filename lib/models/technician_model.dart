@@ -10,8 +10,8 @@ class TechnicianModel {
   final double? long;
 
   final String? profilePic;
-  final String? workToolsImage;
-  final String? previousWorkImage;
+  final List<String>? workToolsImages;
+  final List<String>? previousWorkImages;
   final String? workCertificate;
   final String? ninImage;
   final bool isOnline;
@@ -31,8 +31,8 @@ class TechnicianModel {
     this.lat,
     this.long,
     this.profilePic,
-    this.workToolsImage,
-    this.previousWorkImage,
+    this.workToolsImages,
+    this.previousWorkImages,
     this.workCertificate,
     this.ninImage,
     this.isOnline = false,
@@ -54,8 +54,8 @@ class TechnicianModel {
       'lat': lat,
       'long': long,
       'profilePic': profilePic ?? '',
-      'workToolsImage': workToolsImage ?? '',
-      'previousWorkImage': previousWorkImage ?? '',
+      'workToolsImages': workToolsImages ?? [],
+      'previousWorkImages': previousWorkImages ?? [],
       'workCertificate': workCertificate ?? '',
       'ninImage': ninImage ?? '',
       'isOnline': isOnline,
@@ -78,8 +78,11 @@ class TechnicianModel {
       lat: map['lat'] != null ? (map['lat'] as num).toDouble() : null,
       long: map['long'] != null ? (map['long'] as num).toDouble() : null,
       profilePic: map['profilePic'] ?? '',
-      workToolsImage: map['workToolsImage'] ?? '',
-      previousWorkImage: map['previousWorkImage'] ?? '',
+      workToolsImages:
+      List<String>.from(map['workToolsImages'] ?? []),
+
+      previousWorkImages:
+      List<String>.from(map['previousWorkImages'] ?? []),
       workCertificate: map['workCertificate'] ?? '',
       ninImage: map['ninImage'] ?? '',
       isOnline: map['isOnline'] ?? false,

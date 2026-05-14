@@ -131,10 +131,16 @@ class _TechnicianCardState extends State<TechnicianCard> {
     );
   }
 
+  bool _loaded = false;
+
   @override
   void initState() {
     super.initState();
-    _loadTechnician();
+
+    if (!_loaded) {
+      _loaded = true;
+      _loadTechnician();
+    }
   }
 
 
@@ -162,10 +168,8 @@ class _TechnicianCardState extends State<TechnicianCard> {
         final data = _extractRequestData(snapshot);
         _handleSideEffects(data.status);
 
-        if (isTechLoading) {
-          return const Center(
-            child: Text("Fetching technicians..."),
-          );
+        if (techData == null) {
+          return _buildCard(context, _RequestData(status: "none", requestId: null));
         }
 
         return _buildCard(context, data);

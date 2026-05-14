@@ -56,7 +56,7 @@ class Step4Verification extends ConsumerWidget {
       ///  STEP 1: instant preview
       ref
           .read(technicianSignupController.notifier)
-          .setImage(type: type, path: pickedFile.path);
+          .addImage(type: type, path: pickedFile.path);
 
       /// STEP 2: upload
       final url = await uploadToCloudinary(pickedFile);
@@ -65,7 +65,7 @@ class Step4Verification extends ConsumerWidget {
       if (url != null) {
         ref
             .read(technicianSignupController.notifier)
-            .setImage(type: type, path: url);
+            .addImage(type: type, path: url);
       }
     }
 
@@ -125,7 +125,7 @@ class Step4Verification extends ConsumerWidget {
                     onTap: () {
                       ref
                           .read(technicianSignupController.notifier)
-                          .setImage(type: 'nin', path: '');
+                          .addImage(type: 'nin', path: '');
                     },
                     child: Container(
                       decoration: const BoxDecoration(

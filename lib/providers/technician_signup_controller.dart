@@ -53,16 +53,66 @@ class TechnicianSignupController
     saveDraft();
   }
 
-  void setImage({required String type, required String path}) {
+  /// ADD IMAGE
+  void addImage({
+    required String type,
+    required String path,
+  }) {
     if (type == "tools") {
-      state = state.copyWith(toolsImage: path);
-    } else if (type == "profile") {
-      state = state.copyWith(profileImage: path.isEmpty ? null : path,);
-    } else if (type == "work") {
-      state = state.copyWith(workImage: path);
-    } else if (type == "nin") {
-      state = state.copyWith(ninImage: path);
+      final updated = [...state.toolsImages, path];
+
+      state = state.copyWith(
+        toolsImages: updated,
+      );
     }
+
+    else if (type == "work") {
+      final updated = [...state.workImages, path];
+
+      state = state.copyWith(
+        workImages: updated,
+      );
+    }
+
+    else if (type == "profile") {
+      state = state.copyWith(
+        profileImage: path,
+      );
+    }
+
+    else if (type == "nin") {
+      state = state.copyWith(
+        ninImage: path,
+      );
+    }
+
+    saveDraft();
+  }
+
+  /// REMOVE IMAGE
+  void removeImage({
+    required String type,
+    required String path,
+  }) {
+
+    if (type == "tools") {
+      final updated =
+      state.toolsImages.where((e) => e != path).toList();
+
+      state = state.copyWith(
+        toolsImages: updated,
+      );
+    }
+
+    else if (type == "work") {
+      final updated =
+      state.workImages.where((e) => e != path).toList();
+
+      state = state.copyWith(
+        workImages: updated,
+      );
+    }
+
     saveDraft();
   }
 
@@ -78,8 +128,8 @@ class TechnicianSignupController
       "years": state.years,
       "address": state.address,
       "profileImage": state.profileImage,
-      "toolsImage": state.toolsImage,
-      "workImage": state.workImage,
+      "toolsImages": state.toolsImages,
+      "workImages": state.workImages,
       "ninImage": state.ninImage,
     }));
   }
@@ -100,8 +150,11 @@ class TechnicianSignupController
         years: decoded["years"],
         address: decoded["address"],
         profileImage: decoded["profileImage"],
-        toolsImage: decoded["toolsImage"],
-        workImage: decoded["workImage"],
+        toolsImages:
+        List<String>.from(decoded["toolsImages"] ?? []),
+
+        workImages:
+        List<String>.from(decoded["workImages"] ?? []),
         ninImage: decoded["ninImage"],
       );
     }
@@ -131,8 +184,8 @@ class TechnicianSignupController
         lat: location?['lat'],
         long: location?['lng'],
         profilePic: state.profileImage,
-        workToolsImage: state.toolsImage,
-        previousWorkImage: state.workImage,
+        workToolsImages: state.toolsImages,
+        previousWorkImages: state.workImages,
         workCertificate: null,
         ninImage: state.ninImage,
         isVerified: false,

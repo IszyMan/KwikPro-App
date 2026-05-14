@@ -86,44 +86,64 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   /// Filter Chips Widget
   Widget _buildFilterChips() {
+
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
+
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+
+      child: Wrap(
+
+        spacing: 8,
+        runSpacing: 8,
+
         children: [
+
           FilterChip(
-            label: Text("Verified"),
+            label: const Text("Verified"),
+
             selected: filterVerified == true,
+
             onSelected: (value) {
+
               setState(() {
                 filterVerified = value ? true : null;
               });
             },
           ),
-          SizedBox(width: 8),
+
           FilterChip(
-            label: Text("Not Verified"),
+            label: const Text("Not Verified"),
+
             selected: filterVerified == false,
+
             onSelected: (value) {
+
               setState(() {
                 filterVerified = value ? false : null;
               });
             },
           ),
-          SizedBox(width: 8),
+
           FilterChip(
-            label: Text("Active"),
+            label: const Text("Active"),
+
             selected: filterSuspended == false,
+
             onSelected: (value) {
+
               setState(() {
                 filterSuspended = value ? false : null;
               });
             },
           ),
-          SizedBox(width: 8),
+
           FilterChip(
-            label: Text("Suspended"),
+            label: const Text("Suspended"),
+
             selected: filterSuspended == true,
+
             onSelected: (value) {
+
               setState(() {
                 filterSuspended = value ? true : null;
               });
@@ -227,22 +247,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       SizedBox(height: 2),
                       Text(location, style: AppTextStyles.body),
                       SizedBox(height: 5),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
                         children: [
+
                           StatusBadge(
-                            label: isVerified ? "Verified" : "Not Verified",
-                            color: isVerified ? Colors.green : Colors.yellow,
+                            label: isVerified
+                                ? "Verified"
+                                : "Not Verified",
+
+                            color: isVerified
+                                ? Colors.green
+                                : Colors.orange,
+
                             icon: Icons.verified,
                           ),
-                          SizedBox(width: 5),
+
                           StatusBadge(
-                            label: isSuspended ? "Suspended" : "Active",
-                            color: isSuspended ? Colors.red : Colors.green,
-                            icon: isSuspended ? Icons.block : Icons.check_circle,
+                            label: isSuspended
+                                ? "Suspended"
+                                : "Active",
+
+                            color: isSuspended
+                                ? Colors.red
+                                : Colors.green,
+
+                            icon: isSuspended
+                                ? Icons.block
+                                : Icons.check_circle,
                           ),
                         ],
-                      ),
+                      )
                     ],
                   ),
                 ),

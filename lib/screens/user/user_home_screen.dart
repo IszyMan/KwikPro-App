@@ -46,7 +46,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
   Future<String> _getAddressFromLatLng(double lat, double lng) async {
     try {
-      print("DEBUG LAT: $lat, LNG: $lng");
+      //print("DEBUG LAT: $lat, LNG: $lng");
 
       final placemarks = await placemarkFromCoordinates(lat, lng);
 

@@ -8,8 +8,8 @@ class TechnicianSignupState {
   final int years;
   final String address;
   final String? profileImage;
-  final String? toolsImage;
-  final String? workImage;
+  final List<String> toolsImages;
+  final List<String> workImages;
   final String? ninImage;
 
   final bool isLoading;
@@ -22,8 +22,8 @@ class TechnicianSignupState {
     this.years = 0,
     this.address = '',
     this.profileImage,
-    this.toolsImage,
-    this.workImage,
+    this.toolsImages = const [],
+    this.workImages = const [],
     this.ninImage,
     this.isLoading = false,
   });
@@ -36,8 +36,8 @@ class TechnicianSignupState {
     int? years,
     String? address,
     String? profileImage,
-    String? toolsImage,
-    String? workImage,
+    List<String>? toolsImages,
+    List<String>? workImages,
     String? ninImage,
     bool? isLoading,
   }) {
@@ -49,8 +49,8 @@ class TechnicianSignupState {
       years: years ?? this.years,
       address: address ?? this.address,
       profileImage: profileImage ?? this.profileImage,
-      toolsImage: toolsImage ?? this.toolsImage,
-      workImage: workImage ?? this.workImage,
+      toolsImages: toolsImages ?? this.toolsImages,
+      workImages: workImages ?? this.workImages,
       ninImage: ninImage ?? this.ninImage,
       isLoading: isLoading ?? this.isLoading,
     );

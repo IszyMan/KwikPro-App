@@ -67,7 +67,7 @@ class Step1ProfileImage extends ConsumerWidget {
 
       // STEP 1: SHOW LOCAL PREVIEW IMMEDIATELY
       ref.read(technicianSignupController.notifier)
-          .setImage(type: 'profile', path: pickedFile.path);
+          .addImage(type: 'profile', path: pickedFile.path);
 
       // STEP 2: UPLOAD IN BACKGROUND
       final url = await uploadToCloudinary(pickedFile);
@@ -75,7 +75,7 @@ class Step1ProfileImage extends ConsumerWidget {
       // STEP 3: REPLACE WITH CLOUD URL
       if (url != null) {
         ref.read(technicianSignupController.notifier)
-            .setImage(type: 'profile', path: url);
+            .addImage(type: 'profile', path: url);
       }
     }
 
@@ -126,7 +126,7 @@ class Step1ProfileImage extends ConsumerWidget {
                       onTap: () {
                         ref
                             .read(technicianSignupController.notifier)
-                            .setImage(type: 'profile', path: '');
+                            .addImage(type: 'profile', path: '');
                       },
                       child: Container(
                         decoration: const BoxDecoration(
