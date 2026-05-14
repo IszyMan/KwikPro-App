@@ -10,6 +10,7 @@ import 'package:kwikpro/screens/technician/technician_notification_screen.dart';
 import '../onboarding/welcome_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/services.dart';
 
 class TechnicianHomeScreen extends ConsumerStatefulWidget {
   const TechnicianHomeScreen({super.key});
@@ -29,6 +30,8 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
   Map<String, int> countdowns = {};
 
   Map<String, dynamic>? _technicianData;
+
+  String? _verificationId;
 
   @override
   void initState() {
@@ -81,6 +84,190 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
       });
 
       debugPrint("FCM Token saved: $token");
+    }
+  }
+
+
+  Future<void> _showDeleteAccountDialog() async {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Account"),
+        content: const Text(
+          "Deleting your account will permanently remove your profile, requests, reviews and account data.\n\nThis action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _sendDeleteOTP();
+            },
+            child: const Text(
+              "Continue",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendDeleteOTP() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null || user.phoneNumber == null) return;
+
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: user.phoneNumber!,
+      verificationCompleted: (PhoneAuthCredential credential) async {},
+
+      verificationFailed: (FirebaseAuthException e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message ?? "OTP failed")),
+        );
+      },
+
+      codeSent: (String verificationId, int? resendToken) {
+        _verificationId = verificationId;
+        _showOTPDialog();
+      },
+
+      codeAutoRetrievalTimeout: (String verificationId) {
+        _verificationId = verificationId;
+      },
+    );
+  }
+
+  Future<void> _showOTPDialog() async {
+    final otpController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("Verify OTP"),
+        content: TextField(
+          controller: otpController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: "Enter OTP",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              await _deleteAccount(
+                otpController.text.trim(),
+              );
+            },
+            child: const Text(
+              "Delete Account",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount(String otpCode) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null || _verificationId == null) return;
+
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: otpCode,
+      );
+
+      // re-authenticate
+      await user.reauthenticateWithCredential(credential);
+
+      final uid = user.uid;
+
+      // delete technician document
+      await FirebaseFirestore.instance
+          .collection('technicians')
+          .doc(uid)
+          .delete();
+
+      // delete requests
+      final requests = await FirebaseFirestore.instance
+          .collection('requests')
+          .where('technicianId', isEqualTo: uid)
+          .get();
+
+      for (final doc in requests.docs) {
+        await doc.reference.delete();
+      }
+
+      // delete notifications
+      final notifications = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (final doc in notifications.docs) {
+        await doc.reference.delete();
+      }
+
+      // delete reviews
+      final reviews = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('technicianId', isEqualTo: uid)
+          .get();
+
+      for (final doc in reviews.docs) {
+        await doc.reference.delete();
+      }
+
+      // delete firebase auth account
+      await user.delete();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Account deleted successfully"),
+        ),
+      );
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WelcomeScreen(),
+        ),
+            (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message ?? "Authentication failed"),
+        ),
+      );
+    } on PlatformException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message ?? "Something went wrong"),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Delete failed: $e"),
+        ),
+      );
     }
   }
 
@@ -455,7 +642,7 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
     final userPhone = _technicianData?['phone'] ?? '';
     final userProfileImage = _technicianData?['profilePic'] ?? '';
     final isVerified = _technicianData?['isVerified'] ?? false;
-    final rating = _technicianData?['rating'] ?? 0.0;
+    final rating = _technicianData?['avgRating'] ?? 0.0;
     final location = _technicianData?['location'] ?? 'Unknown';
     final serviceType = _technicianData?['service'] ?? '';
 
@@ -529,9 +716,16 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
                         ],
                       ),
                       SizedBox(width: 12),
-                      Icon(Icons.star, color: Colors.amber, size: 18),
-                      SizedBox(width: 4),
-                      Text("$rating Rating", style: TextStyle(color: Colors.white)),
+                      Row(
+                        children: [
+                          Text(
+                            rating.toStringAsFixed(1),
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          const SizedBox(width: 6),
+                          Row(children: _buildStars(rating)),
+                        ],
+                      ),
 
                     ],
                   ),
@@ -594,6 +788,15 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
               leading: Icon(Icons.settings),
               title: Text("Settings"),
               onTap: () {},
+            ),
+
+            ListTile(
+              leading: Icon(Icons.delete_forever, color: Colors.red),
+              title: Text(
+                "Delete Account",
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: _showDeleteAccountDialog,
             ),
 
             Spacer(),
@@ -686,5 +889,23 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
         ],
       ),
     );
+  }
+
+
+  List<Widget> _buildStars(double rating) {
+    int fullStars = rating.floor();
+    bool hasHalfStar = (rating - fullStars) >= 0.5;
+
+    List<Widget> stars = [];
+
+    for (int i = 0; i < fullStars; i++) {
+      stars.add(const Icon(Icons.star, size: 16, color: Colors.amber));
+    }
+
+    if (hasHalfStar) {
+      stars.add(const Icon(Icons.star_half, size: 16, color: Colors.amber));
+    }
+
+    return stars;
   }
 }

@@ -8,6 +8,10 @@ import 'package:kwikpro/screens/onboarding/welcome_screen.dart';
 
 import '../../widgets/service_card.dart';
 
+import 'package:flutter/services.dart';
+import 'package:kwikpro/screens/user/edit_user_profile_screen.dart';
+import 'package:kwikpro/screens/user/user_job_history_screen.dart';
+
 class UserHomeScreen extends ConsumerStatefulWidget {
   const UserHomeScreen({super.key});
 
@@ -22,6 +26,11 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   double? userLat;
   double? userLng;
 
+  final GlobalKey<ScaffoldState> _scaffoldKey =
+  GlobalKey<ScaffoldState>();
+
+  String? _verificationId;
+
   String _searchQuery = '';
 
 
@@ -35,11 +44,213 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   ];
 
 
-
   @override
   void initState() {
     super.initState();
     _loadUser();
+  }
+
+
+  Future<void> _showDeleteAccountDialog() async {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Account"),
+        content: const Text(
+          "Deleting your account will permanently remove your profile, requests and account data.\n\nThis action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _sendDeleteOTP();
+            },
+            child: const Text(
+              "Continue",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Future<void> _sendDeleteOTP() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null || user.phoneNumber == null) return;
+
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: user.phoneNumber!,
+
+      verificationCompleted: (
+          PhoneAuthCredential credential,
+          ) async {},
+
+      verificationFailed: (FirebaseAuthException e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.message ?? "OTP failed",
+            ),
+          ),
+        );
+      },
+
+      codeSent: (
+          String verificationId,
+          int? resendToken,
+          ) {
+        _verificationId = verificationId;
+        _showOTPDialog();
+      },
+
+      codeAutoRetrievalTimeout: (
+          String verificationId,
+          ) {
+        _verificationId = verificationId;
+      },
+    );
+  }
+
+
+  Future<void> _showOTPDialog() async {
+    final otpController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("Verify OTP"),
+        content: TextField(
+          controller: otpController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: "Enter OTP",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              await _deleteAccount(
+                otpController.text.trim(),
+              );
+            },
+            child: const Text(
+              "Delete Account",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount(String otpCode) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null || _verificationId == null) return;
+
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: otpCode,
+      );
+
+      // RE-AUTHENTICATE
+      await user.reauthenticateWithCredential(
+        credential,
+      );
+
+      final uid = user.uid;
+
+      // DELETE USER DOCUMENT
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .delete();
+
+      // DELETE USER REQUESTS
+      final requests = await FirebaseFirestore.instance
+          .collection('requests')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (final doc in requests.docs) {
+        await doc.reference.delete();
+      }
+
+      // DELETE NOTIFICATIONS
+      final notifications = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (final doc in notifications.docs) {
+        await doc.reference.delete();
+      }
+
+      // DELETE REVIEWS
+      final reviews = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (final doc in reviews.docs) {
+        await doc.reference.delete();
+      }
+
+      // DELETE FIREBASE AUTH ACCOUNT
+      await user.delete();
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const WelcomeScreen(),
+        ),
+            (route) => false,
+      );
+
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message ?? "Authentication failed",
+          ),
+        ),
+      );
+    } on PlatformException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message ?? "Something went wrong",
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Delete failed: $e",
+          ),
+        ),
+      );
+    }
   }
 
 
@@ -118,6 +329,8 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
       return service.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
     return Scaffold(
+      key: _scaffoldKey,
+      endDrawer: _buildDrawer(context),
       appBar: AppBar(
         title: Column(
 
@@ -168,25 +381,22 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
             ],
           ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: () async {
-              try {
-                await ref.read(authServiceProvider).signOut();
-                ref.read(authProvider.notifier).logout();
-
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                      (route) => false,
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Error logging out $e")));
-              }
-            },
-          )
+          GestureDetector(
+            onTap: () => _scaffoldKey.currentState?.openEndDrawer(),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundImage:
+                profilePic.isNotEmpty
+                    ? NetworkImage(profilePic)
+                    : null,
+                child: profilePic.isEmpty
+                    ? const Icon(Icons.person)
+                    : null,
+              ),
+            ),
+          ),
         ],
       ),
       body: Column(
@@ -249,6 +459,159 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
             ),
           )
         ],
+      ),
+    );
+  }
+
+
+  Drawer _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+
+            // HEADER
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              color: Colors.blue,
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage:
+                    profilePic.isNotEmpty
+                        ? NetworkImage(profilePic)
+                        : null,
+                    child: profilePic.isEmpty
+                        ? const Icon(Icons.person, size: 40)
+                        : null,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 5),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Colors.white70,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        location,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // EDIT PROFILE
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text("Edit Profile"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                    const EditUserProfileScreen(),
+                  ),
+                );
+              },
+            ),
+
+            // JOB HISTORY
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text("Job History"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                    const UserJobHistoryScreen(),
+                  ),
+                );
+              },
+            ),
+
+            // DELETE ACCOUNT
+            ListTile(
+              leading: const Icon(
+                Icons.delete_forever,
+                color: Colors.red,
+              ),
+              title: const Text(
+                "Delete Account",
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: _showDeleteAccountDialog,
+            ),
+
+            const Spacer(),
+
+            const Divider(),
+
+            // LOGOUT
+            ListTile(
+              leading: const Icon(
+                Icons.logout,
+                color: Colors.red,
+              ),
+              title: const Text("Logout"),
+              onTap: () async {
+                try {
+                  await ref
+                      .read(authServiceProvider)
+                      .signOut();
+
+                  ref
+                      .read(authProvider.notifier)
+                      .logout();
+
+                  if (!mounted) return;
+
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                      const WelcomeScreen(),
+                    ),
+                        (route) => false,
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "Logout failed: $e",
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

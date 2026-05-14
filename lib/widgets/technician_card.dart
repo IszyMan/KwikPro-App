@@ -43,48 +43,20 @@ class _TechnicianCardState extends State<TechnicianCard> {
   Map<String, dynamic>? techData;
   bool isTechLoading = true;
 
-  double normalizeRating(double rating) {
-    return (rating * 2).ceil() / 2;
-  }
+
 
   Future<void> _loadTechnician() async {
     try {
-      final techDoc = FirebaseFirestore.instance
+      final doc = await FirebaseFirestore.instance
           .collection('technicians')
           .doc(widget.technician.uid)
           .get();
 
-      final reviewsSnap = FirebaseFirestore.instance
-          .collection('reviews')
-          .where('technicianId', isEqualTo: widget.technician.uid)
-          .get();
-
-      final results = await Future.wait([techDoc, reviewsSnap]);
-
-      final doc = results[0] as DocumentSnapshot;
-      final reviewSnap = results[1] as QuerySnapshot;
-
-      final reviews = reviewSnap.docs;
-
-      final completedJobs = reviews.length;
-
-      double totalRating = 0;
-
-      for (final r in reviews) {
-        final data = r.data() as Map<String, dynamic>;
-        totalRating += (data['rating'] ?? 0).toDouble();
-      }
-
-      final avgRating = completedJobs == 0 ? 0 : totalRating / completedJobs;
-
       if (doc.exists) {
         techData = doc.data() as Map<String, dynamic>;
+      } else {
+        techData = {};
       }
-
-      techData ??= {};
-
-      techData!['completedJobs'] = completedJobs;
-      techData!['avgRating'] = avgRating;
 
     } catch (e) {
       debugPrint("TECH LOAD ERROR: $e");
@@ -131,16 +103,10 @@ class _TechnicianCardState extends State<TechnicianCard> {
     );
   }
 
-  bool _loaded = false;
-
   @override
   void initState() {
     super.initState();
-
-    if (!_loaded) {
-      _loaded = true;
-      _loadTechnician();
-    }
+    _loadTechnician();
   }
 
 
@@ -307,12 +273,12 @@ class _TechnicianCardState extends State<TechnicianCard> {
 
 
   Widget _buildTechnicianInfo(_DistanceData d) {
-    final completedJobs = techData?['completedJobs'] ?? 0;
+    final completedJobs = techData?['totalReviews'] ?? 0;
 
     final avgRating =
         (techData?['avgRating'] as num?)
             ?.toDouble() ??
-            0;
+            0.0;
 
 
     return Column(
@@ -354,7 +320,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "${normalizeRating(avgRating).toStringAsFixed(1)}",
+                avgRating.toStringAsFixed(1),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 4),
@@ -645,21 +611,16 @@ class _TechnicianCardState extends State<TechnicianCard> {
 
 
   List<Widget> _buildStars(double rating) {
-    final normalized = normalizeRating(rating);
-    List<Widget> stars = [];
+    final fullStars = rating.floor();
+    final hasHalfStar = (rating - fullStars) >= 0.5;
 
-    int fullStars = normalized.floor();
-    bool hasHalfStar = (normalized - fullStars) == 0.5;
+    return [
+      for (int i = 0; i < fullStars; i++)
+        const Icon(Icons.star, size: 16, color: Colors.amber),
 
-    for (int i = 0; i < fullStars; i++) {
-      stars.add(const Icon(Icons.star, size: 16, color: Colors.amber));
-    }
-
-    if (hasHalfStar) {
-      stars.add(const Icon(Icons.star_half, size: 16, color: Colors.amber));
-    }
-
-    return stars;
+      if (hasHalfStar)
+        const Icon(Icons.star_half, size: 16, color: Colors.amber),
+    ];
   }
 
 
