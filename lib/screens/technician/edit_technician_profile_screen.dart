@@ -17,27 +17,22 @@ class EditTechnicianProfileScreen extends StatefulWidget {
 class _EditTechnicianProfileScreenState
     extends State<EditTechnicianProfileScreen> {
   final _formKey = GlobalKey<FormState>();
+
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
 
   final ImagePicker _picker = ImagePicker();
 
   String profileImageUrl = '';
-  File? localImageFile;
+  XFile? localProfileImage;
+
   String selectedService = '';
+  List<String> selectedSkills = [];
+
+
+  List<String> workImages = [];
+
   bool isSaving = false;
-  bool isUploadingImage = false;
-
-  ImageProvider? getProfileImage() {
-    if (localImageFile != null) {
-      return FileImage(localImageFile!);
-    }
-
-    if (profileImageUrl.isNotEmpty) {
-      return NetworkImage(profileImageUrl);
-    }
-
-    return null;
-  }
 
   final List<String> services = [
     "AC Repairer",
@@ -48,19 +43,63 @@ class _EditTechnicianProfileScreenState
     "Fridge Repairer",
   ];
 
+  static Map<String, List<String>> serviceSkills = {
+    "Car Mechanic": [
+      "Battery Services",
+      "Car Rewire",
+      "AC Repair",
+      "Brake Service",
+      "German Car",
+      "American Car",
+      "Japanese Car",
+
+    ],
+
+    "Electrician": [
+      "Wiring",
+      "Socket Fixing",
+      "Lighting Installation",
+    ],
+    "AC Repairer": [
+      "AC Gas Filling",
+      "AC Repair",
+      "AC Installation",
+      "Compressor Repair",
+    ],
+    "Plumber": [
+      "Leak Fixing",
+      "Drain Cleaning",
+      "Toilet Repair",
+      "Water Treatment",
+      "Pumping Machine",
+    ],
+    "Generator Repairer": [
+      "Generator Servicing",
+      "Engine Repair",
+      "Oil Change",
+      "Carburetor",
+    ],
+    "Fridge Repairer": [
+      "Freezer Repair"
+          "Gas Filling",
+      "Refrigerator Repair",
+
+    ],
+    "Painter": [
+      "Interior Painting",
+      "Exterior Painting",
+      "Wall Screeding",
+      "Wallpaper installation",
+    ]
+  };
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
   }
 
-  @override
-  void dispose() {
-    _locationController.dispose();
-    super.dispose();
-  }
-
-
+  // ---------------- LOAD DATA ----------------
   Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -77,56 +116,80 @@ class _EditTechnicianProfileScreenState
       _locationController.text = data['location'] ?? '';
       selectedService = data['service'] ?? '';
       profileImageUrl = data['profilePic'] ?? '';
+      selectedSkills = List<String>.from(data['skills'] ?? []);
+
+      /// FIX: safe fallback + correct field
+      workImages = List<String>.from(data['previousWorkImages'] ?? []);
+
+      phoneController.text =
+          FirebaseAuth.instance.currentUser?.phoneNumber ?? '';
     });
   }
 
-
-  Future<String?> uploadToCloudinary(File imageFile) async {
+  // ---------------- CLOUDINARY UPLOAD ----------------
+  Future<String?> uploadToCloudinary(XFile file) async {
     const cloudName = "dcresvgii";
     const uploadPreset = "unsigned_preset";
 
-    final url =
-    Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
+    final url = Uri.parse(
+        "https://api.cloudinary.com/v1_1/$cloudName/image/upload");
 
-    try {
-      final request = http.MultipartRequest("POST", url);
+    final bytes = await file.readAsBytes();
 
-      request.fields['upload_preset'] = uploadPreset;
-      request.files.add(
-        await http.MultipartFile.fromPath('file', imageFile.path),
+    final request = http.MultipartRequest("POST", url)
+      ..fields['upload_preset'] = uploadPreset
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: file.name,
+        ),
       );
 
-      final response = await request.send();
-      final resBody = await response.stream.bytesToString();
+    final response = await request.send();
+    final resBody = await response.stream.bytesToString();
 
-      debugPrint("Cloudinary response: $resBody");
+    final data = json.decode(resBody);
 
-      final decoded = json.decode(resBody);
-
-      if (decoded['secure_url'] != null) {
-        return decoded['secure_url'];
-      } else {
-        throw Exception("Invalid response: $resBody");
-      }
-    } catch (e) {
-      debugPrint("Cloudinary error: $e");
+    if (response.statusCode == 200) {
+      return data['secure_url'];
+    } else {
+      debugPrint("Upload failed: $resBody");
       return null;
     }
   }
 
-
-  Future<void> _pickImage() async {
-    final pickedFile =
-    await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-
-    if (pickedFile == null) return;
+  // ---------------- PROFILE IMAGE ----------------
+  Future<void> _pickProfileImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
 
     setState(() {
-      localImageFile = File(pickedFile.path); // ✅ instant UI update
+      localProfileImage = picked;
     });
   }
 
+  // ---------------- ADD WORK IMAGE ----------------
+  Future<void> _addWorkImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
 
+    final url = await uploadToCloudinary(picked);
+    if (url == null) return;
+
+    setState(() {
+      workImages.add(url);
+    });
+  }
+
+  // ---------------- REMOVE IMAGE ----------------
+  void _removeWorkImage(String url) {
+    setState(() {
+      workImages = List.from(workImages)..remove(url);
+    });
+  }
+
+  // ---------------- SAVE ----------------
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -136,15 +199,14 @@ class _EditTechnicianProfileScreenState
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      String imageUrlToSave = profileImageUrl;
+      String imageUrl = profileImageUrl;
 
-      // upload new image if selected
-      if (localImageFile != null) {
-        final uploadedUrl = await uploadToCloudinary(localImageFile!);
+      if (localProfileImage != null) {
+        final uploaded =
+        await uploadToCloudinary(localProfileImage!);
 
-        if (uploadedUrl != null) {
-          imageUrlToSave = uploadedUrl;
-          profileImageUrl = uploadedUrl; // ✅ update UI too
+        if (uploaded != null) {
+          imageUrl = uploaded;
         }
       }
 
@@ -154,17 +216,27 @@ class _EditTechnicianProfileScreenState
           .update({
         "location": _locationController.text.trim(),
         "service": selectedService,
-        "profilePic": imageUrlToSave,
+        "skills": selectedSkills,
+        "profilePic": imageUrl,
+
+        /// 🔥 SAFE WRITE
+        "previousWorkImages":
+        workImages.where((e) => e.isNotEmpty).toList(),
+
         "updatedAt": FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        profileImageUrl = imageUrl;
+        localProfileImage = null;
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Profile updated")),
         );
+        Navigator.pop(context, true);
       }
-
-      Navigator.pop(context, true);
     } catch (e) {
       debugPrint("SAVE ERROR: $e");
 
@@ -176,12 +248,88 @@ class _EditTechnicianProfileScreenState
     setState(() => isSaving = false);
   }
 
+  // ---------------- WORK GALLERY ----------------
+  Widget _buildWorkGallery() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Previous Work Images",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+
+        SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: workImages.length + 1,
+            itemBuilder: (context, index) {
+              if (index == workImages.length) {
+                return GestureDetector(
+                  onTap: _addWorkImage,
+                  child: Container(
+                    width: 140,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      border: Border.all(),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo),
+                        SizedBox(height: 8),
+                        Text("Add Image"),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final url = workImages[index];
+
+              return Stack(
+                children: [
+                  Container(
+                    width: 140,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: NetworkImage(url),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+
+                  Positioned(
+                    top: 6,
+                    right: 10,
+                    child: GestureDetector(
+                      onTap: () => _removeWorkImage(url),
+                      child: const CircleAvatar(
+                        radius: 12,
+                        child: Icon(Icons.close, size: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
+    final skills = serviceSkills[selectedService] ?? [];
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Edit Profile"),
-      ),
+      appBar: AppBar(title: const Text("Edit Profile")),
       body: isSaving
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -190,36 +338,36 @@ class _EditTechnicianProfileScreenState
           key: _formKey,
           child: Column(
             children: [
-
-              const SizedBox(height: 10),
-
-
-              CircleAvatar(
-                key: ValueKey(localImageFile?.path ?? profileImageUrl),
-                radius: 50,
-                backgroundImage: localImageFile != null
-                    ? FileImage(localImageFile!)
-                    : profileImageUrl.isNotEmpty
-                    ? NetworkImage(profileImageUrl)
-                    : null,
-                child: (localImageFile == null && profileImageUrl.isEmpty)
-                    ? const Icon(Icons.person, size: 40)
-                    : null,
+              GestureDetector(
+                onTap: _pickProfileImage,
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundImage: localProfileImage != null
+                      ? FileImage(File(localProfileImage!.path))
+                      : profileImageUrl.isNotEmpty
+                      ? NetworkImage(profileImageUrl)
+                      : null,
+                  child: const Icon(Icons.person),
+                ),
               ),
 
               const SizedBox(height: 20),
 
               TextFormField(
-                controller: _locationController,
-                decoration: const InputDecoration(
-                  labelText: "Area of Operation",
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) =>
-                value!.isEmpty ? "Enter location" : null,
+                controller: phoneController,
+                readOnly: true,
+                decoration: const InputDecoration(labelText: "Phone"),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 15),
+
+              TextFormField(
+                controller: _locationController,
+                decoration:
+                const InputDecoration(labelText: "Location"),
+              ),
+
+              const SizedBox(height: 15),
 
               DropdownButtonFormField<String>(
                 value: selectedService.isEmpty ? null : selectedService,
@@ -231,51 +379,42 @@ class _EditTechnicianProfileScreenState
                     .toList(),
                 onChanged: (val) {
                   setState(() {
-                    selectedService = val ?? '';
+                    selectedService = val!;
+                    selectedSkills = [];
                   });
                 },
-                decoration: const InputDecoration(
-                  labelText: "Service Type",
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) =>
-                value == null || value.isEmpty
-                    ? "Select a service"
-                    : null,
+                decoration:
+                const InputDecoration(labelText: "Service Type"),
               ),
 
               const SizedBox(height: 10),
 
-              InkWell(
-                onTap: _pickImage,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.image, color: Colors.grey),
-                      SizedBox(width: 10),
-                      Text("Change Profile Picture"),
-                      Spacer(),
-                      Icon(Icons.upload),
-                    ],
-                  ),
-                ),
-              ),
+              ...skills.map((skill) => CheckboxListTile(
+                value: selectedSkills.contains(skill),
+                title: Text(skill),
+                onChanged: (val) {
+                  setState(() {
+                    if (val == true) {
+                      selectedSkills.add(skill);
+                    } else {
+                      selectedSkills.remove(skill);
+                    }
+                  });
+                },
+              )),
 
-              SizedBox(height: 15,),
+              const SizedBox(height: 20),
+
+              _buildWorkGallery(),
+
+              const SizedBox(height: 20),
 
               ElevatedButton(
-                onPressed: isSaving ? null : _saveProfile,
+                onPressed: _saveProfile,
                 child: const Text("Save Changes"),
-              ),
+              )
             ],
-          )
+          ),
         ),
       ),
     );

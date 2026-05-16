@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kwikpro/screens/user/search_technicians_screen.dart';
 import 'package:kwikpro/screens/user/user_contacts.dart';
+import 'package:kwikpro/screens/user/user_job_history_screen.dart';
 import 'package:kwikpro/screens/user/user_profile_screen.dart';
 import '../admin/customer_support.dart';
 import 'user_home_screen.dart';
@@ -17,7 +18,7 @@ class _UserMainScreenState extends State<UserMainScreen> {
 
   final List<Widget> _screens = [
     UserHomeScreen(),
-    UserContacts(),
+    UserJobHistoryScreen(),
     SearchTechnicianScreen(),
     CustomerSupport(),
     UserProfileScreen(),

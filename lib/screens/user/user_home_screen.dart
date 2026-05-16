@@ -337,12 +337,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundImage:
-                    profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
-                    child: profilePic.isEmpty ? Icon(Icons.person, size: 20) : null,
-                  ),
+
                   SizedBox(width: 10),
                   Text('Hi, $name'),
                 ],

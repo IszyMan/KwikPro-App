@@ -571,6 +571,8 @@ class _TechnicianCardState extends State<TechnicianCard> {
     await FirebaseFirestore.instance.collection('requests').add({
       "userId": user.uid,
       "technicianId": widget.technician.uid,
+      "technicianName": widget.technician.name,
+      "technicianImage": widget.technician.profilePic,
       "service": widget.technician.service,
       "serviceLocationAddress": widget.serviceLocationAddress,
       "description": widget.issueDescription,
