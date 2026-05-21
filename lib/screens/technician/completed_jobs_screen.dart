@@ -39,7 +39,14 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
 
       final allReviews = allReviewsSnap.docs;
 
-      totalCompleted = allReviews.length;
+      final techDoc = await FirebaseFirestore.instance
+          .collection('technicians')
+          .doc(technicianId)
+          .get();
+
+      final techData = techDoc.data() ?? {};
+
+      totalCompleted = (techData['completedJobs'] ?? 0);
 
       double totalPrice = 0;
       double totalService = 0;

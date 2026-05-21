@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class RequestModel {
   final String id;
   final String userId;
@@ -10,6 +12,8 @@ class RequestModel {
   final double userLng;
   final String status;
   final double? price;
+  final String type;
+  final Timestamp? appointmentDate;
   final Map<String, dynamic> timeline;
 
   RequestModel({
@@ -24,6 +28,8 @@ class RequestModel {
     required this.userLng,
     required this.status,
     this.price,
+    required this.type,
+    this.appointmentDate,
     required this.timeline,
   });
 
@@ -39,6 +45,8 @@ class RequestModel {
       "userLng": userLng,
       "status": status,
       "price": price,
+      "type": type,
+      "appointmentDate": appointmentDate,
       "timeline": timeline,
     };
   }

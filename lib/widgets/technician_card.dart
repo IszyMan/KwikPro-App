@@ -6,7 +6,7 @@ import 'package:kwikpro/models/technician_model.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kwikpro/screens/user/active_job_screen.dart';
 import 'package:audioplayers/audioplayers.dart';
-
+import 'package:intl/intl.dart';
 import '../screens/user/view_technician_profile_screen.dart';
 
 class TechnicianCard extends StatefulWidget {
@@ -39,6 +39,8 @@ class _TechnicianCardState extends State<TechnicianCard> {
   bool isCounting = false;
   String lastStatus = "";
   final AudioPlayer audioPlayer = AudioPlayer();
+  Stream<QuerySnapshot>? _requestStream;
+
 
   Map<String, dynamic>? techData;
   bool isTechLoading = true;
@@ -103,10 +105,38 @@ class _TechnicianCardState extends State<TechnicianCard> {
     );
   }
 
+
+
   @override
   void initState() {
     super.initState();
+
     _loadTechnician();
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      _requestStream = FirebaseFirestore.instance
+          .collection('requests')
+          .where('userId', isEqualTo: user.uid)
+          .where('technicianId', isEqualTo: widget.technician.uid)
+          .where(
+        'status',
+        whereIn: [
+          'pending',
+          'accepted',
+          'onTheWay',
+          'arrived',
+          'inProgress',
+          'completionRequested',
+          'scheduled',
+          'appointmentAccepted',
+        ],
+      )
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .snapshots();
+    }
   }
 
 
@@ -116,46 +146,72 @@ class _TechnicianCardState extends State<TechnicianCard> {
     super.dispose();
   }
 
+  Future<bool> _hasWorkedBefore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+
+    final snap = await FirebaseFirestore.instance
+        .collection('requests')
+        .where('userId', isEqualTo: user.uid)
+        .where('technicianId', isEqualTo: widget.technician.uid)
+        .where('status', isEqualTo: 'completed')
+        .limit(1)
+        .get();
+
+    return snap.docs.isNotEmpty;
+  }
+
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const SizedBox();
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('requests')
-          .where('userId', isEqualTo: user.uid)
-          .where('technicianId', isEqualTo: widget.technician.uid)
-          .orderBy('createdAt', descending: true)
-          .limit(1)
-          .snapshots(),
-      builder: (context, snapshot) {
-        final data = _extractRequestData(snapshot);
-        _handleSideEffects(data.status);
 
-        if (techData == null) {
-          return _buildCard(context, _RequestData(status: "none", requestId: null));
-        }
+    return FutureBuilder<bool>(
+      future: _hasWorkedBefore(),
+      builder: (context, historySnap) {
+        final hasWorkedBefore = historySnap.data ?? false;
 
-        return _buildCard(context, data);
+        return StreamBuilder<QuerySnapshot>(
+          stream: _requestStream,
+          builder: (context, snapshot) {
+            final data = _extractRequestData(snapshot);
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && lastStatus != data.status) {
+                _handleSideEffects(data.status);
+              }
+            });
+            return _buildCard(
+              context,
+              data,
+              hasWorkedBefore: hasWorkedBefore,
+            );
+          },
+        );
       },
     );
   }
 
 
   _RequestData _extractRequestData(AsyncSnapshot<QuerySnapshot> snapshot) {
-    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-      final doc = snapshot.data!.docs.first;
-      final map = doc.data() as Map<String, dynamic>;
-
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
       return _RequestData(
-        status: map['status'] ?? "none",
-        requestId: doc.id,
+        status: "none",
+        requestId: null,
+        type: "",
       );
     }
 
-    return _RequestData(status: "none", requestId: null);
+    final doc = snapshot.data!.docs.first;
+    final map = doc.data() as Map<String, dynamic>;
+
+    return _RequestData(
+      status: map['status'] ?? "none",
+      requestId: doc.id,
+      type: map['type'] ?? "",
+    );
   }
 
 
@@ -164,7 +220,9 @@ class _TechnicianCardState extends State<TechnicianCard> {
       audioPlayer.play(AssetSource('notification.mp3'));
     }
 
-    if (status == "pending" && lastStatus != "pending") {
+    if (status == "pending" &&
+        lastStatus != "pending" &&
+        !isCounting) {
       startTimer();
     }
 
@@ -176,7 +234,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
   }
 
 
-  Widget _buildCard(BuildContext context, _RequestData data) {
+  Widget _buildCard(BuildContext context, _RequestData data, {required bool hasWorkedBefore}) {
     final distanceData = _calculateDistance();
 
     return Card(
@@ -192,12 +250,17 @@ class _TechnicianCardState extends State<TechnicianCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTechnicianInfo(distanceData),
+                  _buildTechnicianInfo(distanceData, hasWorkedBefore: hasWorkedBefore,),
                   const SizedBox(height: 6),
 
                   _buildStatusChip(data.status),
                   const SizedBox(height: 8),
-                  _buildActionRow(context, data),
+
+                  _buildTopActionRow(context, data),
+                  const SizedBox(height: 10),
+
+                  if (data.requestId == null)
+                    _buildBottomActionRow(context),
                 ],
               ),
             ),
@@ -272,8 +335,12 @@ class _TechnicianCardState extends State<TechnicianCard> {
   }
 
 
-  Widget _buildTechnicianInfo(_DistanceData d) {
-    final completedJobs = techData?['totalReviews'] ?? 0;
+  Widget _buildTechnicianInfo(_DistanceData d, {
+    required bool hasWorkedBefore,
+  }) {
+
+    final completedJobs =
+        techData?['completedJobs'] ?? 0;
 
     final avgRating =
         (techData?['avgRating'] as num?)
@@ -290,43 +357,68 @@ class _TechnicianCardState extends State<TechnicianCard> {
               child: Text(
                 widget.technician.name,
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 18),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ),
-            const SizedBox(width: 5),
-           _buildVerifiedBadge(),
 
+            const SizedBox(width: 5),
+
+            _buildVerifiedBadge(),
+
+            if (hasWorkedBefore) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  "Worked before",
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ]
           ],
         ),
 
-        Text(
-          "Completed jobs: $completedJobs",
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: Colors.green,
-          ),
-        ),
+        Row(
+          children: [
 
-        const SizedBox(height: 4),
-
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.amber.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                avgRating.toStringAsFixed(1),
-                style: const TextStyle(fontWeight: FontWeight.bold),
+            // RATING NUMBER
+            Text(
+              avgRating.toStringAsFixed(1),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade800,
               ),
-              const SizedBox(width: 4),
-              ..._buildStars(avgRating),
-            ],
-          ),
+            ),
+
+            const SizedBox(width: 6),
+
+            // STARS
+            ..._buildStars(avgRating),
+
+            const SizedBox(width: 4),
+
+
+
+            // JOB COUNT
+            Text(
+              "($completedJobs jobs)",
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 6),
@@ -370,6 +462,11 @@ class _TechnicianCardState extends State<TechnicianCard> {
       "completionRequested": ("⏳ Awaiting Confirmation", Colors.amber),
       "completed": ("✅ Completed", Colors.green),
       "rejected": ("❌ Declined", Colors.red),
+      "scheduled": ("📅 Appointment Pending", Colors.blue),
+      "appointmentAccepted": ("✅ Appointment Confirmed", Colors.green),
+      "appointmentRejected": ("❌ Appointment Declined", Colors.red),
+      "cancelled": ("❌ Cancelled", Colors.grey),
+      "expired": ("⌛ No Response", Colors.grey),
     };
 
     final item = map[status];
@@ -383,47 +480,30 @@ class _TechnicianCardState extends State<TechnicianCard> {
   }
 
 
-  Widget _buildActionRow(BuildContext context, _RequestData data) {
+  Widget _buildTopActionRow(
+      BuildContext context,
+      _RequestData data,
+      ) {
+
     final id = data.requestId;
     final status = data.status;
 
-    // ===== NO REQUEST =====
+    // NO REQUEST
     if (id == null) {
-      return Row(
+      return Column(
         children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _sendRequest(context),
-              child: const Text("Request"),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
+          SizedBox(
+            width: double.infinity,
             child: OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ViewTechnicianProfileScreen(
-                      technician: widget.technician,
-                      userLat: widget.userLat,
-                      userLng: widget.userLng,
-                      serviceLocationAddress: widget.serviceLocationAddress,
-                      issueDescription: widget.issueDescription,
-                      imageUrl: widget.imageUrl,
-                      selectedSkills: widget.selectedSkills,
-                    ),
-                  ),
-                );
-              },
-              child: const Text("Profile"),
+              onPressed: () => _sendRequest(context),
+              child: const Text("Request Now"),
             ),
           ),
         ],
       );
     }
 
-    // ===== PENDING =====
+    // PENDING
     if (status == "pending") {
       return Row(
         children: [
@@ -436,129 +516,118 @@ class _TechnicianCardState extends State<TechnicianCard> {
               child: const Text("Cancel"),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ViewTechnicianProfileScreen(
-                      technician: widget.technician,
-                      userLat: widget.userLat,
-                      userLng: widget.userLng,
-                      serviceLocationAddress: widget.serviceLocationAddress,
-                      issueDescription: widget.issueDescription,
-                      imageUrl: widget.imageUrl,
-                      selectedSkills: widget.selectedSkills,
-                    ),
-                  ),
-                );
-              },
-              child: const Text("Profile"),
-            ),
-          ),
         ],
       );
     }
 
-    // ===== ACTIVE JOB =====
-    if (status == "accepted" ||
-        status == "onTheWay" ||
-        status == "arrived" ||
-        status == "inProgress" ||
-        status == "completionRequested") {
+    // ACTIVE STATUSES
+    final activeStatuses = [
+      "accepted",
+      "appointmentAccepted",
+      "onTheWay",
+      "arrived",
+      "inProgress",
+      "completionRequested",
+    ];
+
+    // CLOSED STATUSES
+    final closedStatuses = [
+      "completed",
+      "rejected",
+      "cancelled",
+      "expired",
+    ];
+
+    // ACTIVE JOB UI
+    if (activeStatuses.contains(status)) {
       return Row(
         children: [
           Expanded(
             child: ElevatedButton(
-              onPressed: () => _openActiveJob(id!),
+              onPressed: () => _openActiveJob(id),
               child: const Text("View Job"),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ViewTechnicianProfileScreen(
-                      technician: widget.technician,
-                      userLat: widget.userLat,
-                      userLng: widget.userLng,
-                      serviceLocationAddress: widget.serviceLocationAddress,
-                      issueDescription: widget.issueDescription,
-                      imageUrl: widget.imageUrl,
-                      selectedSkills: widget.selectedSkills,
-                    ),
-                  ),
-                );
-              },
-              child: const Text("Profile"),
             ),
           ),
         ],
       );
     }
 
-    // ===== COMPLETED / REJECTED =====
+    // CLOSED JOB UI
+    if (closedStatuses.contains(status)) {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _sendRequest(context),
+              child: const Text("Request Again"),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // FALLBACK UI
+    return const SizedBox();
+  }
+
+  Widget _buildBottomActionRow(BuildContext context) {
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton(
-            onPressed: () => _sendRequest(context),
-            child: const Text("Book Again"),
+          child: OutlinedButton(
+            onPressed: _bookAppointment,
+            child: const Text("Book Appointment"),
           ),
         ),
         const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ViewTechnicianProfileScreen(
-                    technician: widget.technician,
-                    userLat: widget.userLat,
-                    userLng: widget.userLng,
-                    serviceLocationAddress: widget.serviceLocationAddress,
-                    issueDescription: widget.issueDescription,
-                    imageUrl: widget.imageUrl,
-                    selectedSkills: widget.selectedSkills,
-                  ),
-                ),
-              );
-            },
-            child: const Text("Profile"),
-          ),
-        ),
+        Expanded(child: _profileButton()),
       ],
+    );
+  }
+
+  Widget _profileButton() {
+    return OutlinedButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ViewTechnicianProfileScreen(
+              technician: widget.technician,
+              userLat: widget.userLat,
+              userLng: widget.userLng,
+              serviceLocationAddress: widget.serviceLocationAddress,
+              issueDescription: widget.issueDescription,
+              imageUrl: widget.imageUrl,
+              selectedSkills: widget.selectedSkills,
+            ),
+          ),
+        );
+      },
+      child: const Text("Profile"),
     );
   }
 
 
   Future<void> _sendRequest(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
+
+    final requestSessionId =
+        "${user?.uid}_${widget.technician.uid}";
+
     if (user == null) return;
 
     startTimer();
 
-    final existing = await FirebaseFirestore.instance
+    final existingAppointment =
+    await FirebaseFirestore.instance
         .collection('requests')
         .where('userId', isEqualTo: user.uid)
         .where('technicianId', isEqualTo: widget.technician.uid)
-        .where('status', whereIn: [
-      "pending",
-      "accepted",
-      "onTheWay",
-      "arrived",
-      "inProgress",
-      "completionRequested",
-    ])
+        .where('type', isEqualTo: 'appointment')
+        .where('isActive', isEqualTo: true)
         .get();
 
-    if (existing.docs.isNotEmpty) {
+    if (existingAppointment.docs.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("You already have an active request"),
@@ -567,10 +636,13 @@ class _TechnicianCardState extends State<TechnicianCard> {
       return;
     }
 
+
     final docRef =
     await FirebaseFirestore.instance.collection('requests').add({
+
       "userId": user.uid,
       "technicianId": widget.technician.uid,
+      "type": "instant",
       "technicianName": widget.technician.name,
       "technicianImage": widget.technician.profilePic,
       "service": widget.technician.service,
@@ -579,36 +651,170 @@ class _TechnicianCardState extends State<TechnicianCard> {
       "imageUrl": widget.imageUrl.isNotEmpty ? widget.imageUrl : null,
       "userLat": widget.userLat,
       "userLng": widget.userLng,
+      "sessionId": requestSessionId,
+      "isActive": true,
       "status": "pending",
       "createdAt": FieldValue.serverTimestamp(),
     });
+
+    if (mounted) {
+      setState(() {});
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Request sent")),
     );
 
     Future.delayed(const Duration(seconds: 30), () async {
+
+      if (!mounted) return;
+
       final doc = await docRef.get();
 
       if (!doc.exists) return;
 
-      final currentStatus = doc.data()?['status'];
+      final data = doc.data();
+
+      if (data == null) return;
+
+      if (data['isActive'] != true) return;
+
+      final currentStatus = data['status'];
 
       if (currentStatus == "pending") {
+
         await docRef.update({
-          "status": "rejected",
+          "status": "expired",
+          "isActive": false,
         });
+
       }
+
     });
   }
 
+  Future<void> _bookAppointment() async {
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(
+        const Duration(days: 30),
+      ),
+      initialDate: DateTime.now(),
+    );
+
+    if (pickedDate == null) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (pickedTime == null) return;
+
+    final appointmentDate = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    final existingAppointment =
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .where('userId', isEqualTo: user.uid)
+        .where('technicianId',
+        isEqualTo: widget.technician.uid)
+        .where('type', isEqualTo: 'appointment')
+        .where('status',
+        whereIn: [
+          "scheduled",
+          "appointmentAccepted"
+        ])
+        .get();
+
+    if (existingAppointment.docs.isNotEmpty) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "You already booked an appointment",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    await FirebaseFirestore.instance.collection('requests').add({
+      "userId": user.uid,
+      "technicianId": widget.technician.uid,
+
+      "type": "appointment",
+      "jobType": "appointment",
+
+      "technicianName": widget.technician.name,
+      "technicianImage": widget.technician.profilePic,
+
+      "service": widget.technician.service,
+      "serviceLocationAddress": widget.serviceLocationAddress,
+      "description": widget.issueDescription,
+
+      "jobLocation": {
+        "address": widget.serviceLocationAddress,
+        "lat": widget.userLat,
+        "lng": widget.userLng,
+      },
+
+      "imageUrl": widget.imageUrl.isNotEmpty
+          ? widget.imageUrl
+          : null,
+
+      "status": "scheduled",
+      "isActive": true,
+
+      "appointmentDate":
+      Timestamp.fromDate(appointmentDate),
+
+      "appointmentTime":
+      "${pickedTime.hour}:${pickedTime.minute}",
+
+      "createdAt": FieldValue.serverTimestamp(),
+    });
+
+    if (mounted) setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "Appointment booked for "
+              "${DateFormat.yMMMd().add_jm().format(appointmentDate)}",
+        ),
+      ),
+    );
+  }
+
   Future<void> _cancelRequest(String requestId) async {
+
     await FirebaseFirestore.instance
         .collection('requests')
         .doc(requestId)
-        .update({"status": "rejected"});
+        .update({
+      "status": "cancelled",
+      "isActive": false,
+    });
 
-    setState(() => isCounting = false);
+    if (mounted) {
+      setState(() {
+        isCounting = false;
+      });
+    }
   }
 
 
@@ -633,8 +839,13 @@ class _TechnicianCardState extends State<TechnicianCard> {
 class _RequestData {
   final String status;
   final String? requestId;
+  final String type;
 
-  _RequestData({required this.status, required this.requestId});
+  _RequestData({
+    required this.status,
+    required this.requestId,
+    required this.type,
+  });
 }
 
 class _DistanceData {
@@ -643,6 +854,8 @@ class _DistanceData {
 
   _DistanceData({required this.distance, required this.eta});
 }
+
+
 
 
 

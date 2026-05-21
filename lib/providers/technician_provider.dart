@@ -15,7 +15,7 @@ class TechnicianNotifier extends StateNotifier<List<TechnicianModel>> {
   Future<void> fetchTechnicians() async {
     final snapshot = await FirebaseFirestore.instance
         .collection('technicians')
-        .where('isOnline', isEqualTo: true) // ✅ ONLY ONLINE
+        .where('isOnline', isEqualTo: true) // ONLY ONLINE
         .get();
 
     state = snapshot.docs

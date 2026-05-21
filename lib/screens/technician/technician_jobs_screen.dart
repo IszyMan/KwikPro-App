@@ -21,12 +21,56 @@ class TechnicianJobsScreen extends StatelessWidget {
 
         final docs = snapshot.data!.docs;
 
-        final pending = docs.where((d) => d['status'] == "pending").toList();
-        final active = docs.where((d) => d['status'] != "pending" && d['status'] != "completed").toList();
+        final incomingInstant = docs.where((d) {
+
+          final map = d.data() as Map<String, dynamic>;
+
+          final type = map['type'] ?? "instant";
+          final status = map['status'] ?? "";
+
+          return type == "instant" && status == "pending";
+
+        }).toList();
+
+        final incomingAppointments = docs.where((d) {
+
+          final map = d.data() as Map<String, dynamic>;
+
+          final type = map['type'] ?? "";
+          final status = map['status'] ?? "";
+
+          return type == "appointment" &&
+              status == "scheduled";
+
+        }).toList();
+
+        final active = docs.where((d) {
+
+          final status = d['status'];
+
+          return status != "pending" &&
+              status != "scheduled" &&
+              status != "completed" &&
+              status != "rejected" &&
+              status != "appointmentRejected";
+
+        }).toList();
+
+
 
         return ListView(
           children: [
-            _section("Incoming Requests", pending, context),
+            _section(
+              "Incoming Requests",
+              incomingInstant,
+              context,
+            ),
+
+            _section(
+              "Incoming Appointments",
+              incomingAppointments,
+              context,
+            ),
             _section("Active Jobs", active, context),
           ],
         );
@@ -116,6 +160,108 @@ class TechnicianJobsScreen extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+
+                  if (status == "scheduled")
+                    Row(
+                      children: [
+
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _update(
+                              doc.id,
+                              "appointmentAccepted",
+                              data,
+                            ),
+                            child: const Text("Confirm"),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                            onPressed: () => _update(
+                              doc.id,
+                              "appointmentRejected",
+                              data,
+                            ),
+                            child: const Text("Decline"),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                  if (status == "appointmentAccepted")
+                    Builder(
+                      builder: (_) {
+                        final appointmentDate =
+                        (data['appointmentDate'] as Timestamp).toDate();
+
+                        final isToday =
+                            DateTime.now().day == appointmentDate.day &&
+                                DateTime.now().month == appointmentDate.month &&
+                                DateTime.now().year == appointmentDate.year;
+
+                        final location = data['jobLocation']?['address'] ??
+                            data['serviceLocationAddress'] ??
+                            "No location";
+
+                        final time = data['appointmentTime'] ?? "--";
+
+                        final description = data['description'] ?? "No description provided";
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("📌 Job Type: Appointment",
+                                  style: const TextStyle(fontWeight: FontWeight.bold)),
+
+                              const SizedBox(height: 6),
+
+                              Text("📝 Description: $description"),
+
+                              const SizedBox(height: 6),
+
+                              Text("📍 Location: $location"),
+
+                              const SizedBox(height: 6),
+
+                              Text("📅 Date: ${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}"),
+
+                              const SizedBox(height: 6),
+
+                              Text("⏰ Time: $time"),
+
+                              const SizedBox(height: 12),
+
+                              if (isToday)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () =>
+                                        _update(doc.id, "onTheWay", data),
+                                    child: const Text("Start Appointment Job"),
+                                  ),
+                                )
+                              else
+                                const Text(
+                                  "Not today yet",
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
 
                   if (status == "accepted")
@@ -222,9 +368,17 @@ class TechnicianJobsScreen extends StatelessWidget {
   // ================= UPDATE + NOTIFICATIONS =================
 
   Future<void> _update(String id, String status, Map data) async {
-    await FirebaseFirestore.instance.collection("requests").doc(id).update({
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .doc(id)
+        .update({
       "status": status,
+
+      if (status == "completed") ...{
+        "isActive": false,
+      }
     });
+
 
     // TODO: call notification service here
   }

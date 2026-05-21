@@ -56,13 +56,19 @@ class _ViewTechnicianProfileScreenState
         .collection('reviews')
         .where(
       'technicianId',
-      isEqualTo: widget.technician.uid,
-    )
-        .get();
+      isEqualTo: widget.technician.uid).get();
 
     final docs = snap.docs;
 
     final count = docs.length;
+
+
+    final techDoc = await FirebaseFirestore.instance
+        .collection('technicians')
+        .doc(widget.technician.uid)
+        .get();
+
+    final techData = techDoc.data() ?? {};
 
     if (count == 0) {
       return {
@@ -92,7 +98,7 @@ class _ViewTechnicianProfileScreenState
     }
 
     return {
-      "completedJobs": count,
+      "completedJobs": techData['completedJobs'] ?? 0,
       "avgRating": totalRating / count,
       "avgPrice": totalPrice / count,
       "avgService": totalService / count,

@@ -156,6 +156,9 @@ class _RatingReviewScreenState extends State<RatingReviewScreen> {
 
         int totalReviews = (data['totalReviews'] ?? 0);
 
+        int completedJobs =
+        (data['completedJobs'] ?? 0);
+
         // new averages
         double newAvgRating =
             ((avgRating * totalReviews) + overall) /
@@ -174,6 +177,7 @@ class _RatingReviewScreenState extends State<RatingReviewScreen> {
           "avgPriceRating": newAvgPrice,
           "avgServiceRating": newAvgService,
           "totalReviews": totalReviews + 1,
+          "completedJobs": completedJobs + 1,
         });
       });
 
