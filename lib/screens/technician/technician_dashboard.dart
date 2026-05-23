@@ -35,7 +35,7 @@ class _TechnicianDashboardState extends State<TechnicianDashboard>
           controller: _tabController,
           tabs: [
             Tab(text: "Jobs Requests"),
-            Tab(text: "Completed Jobs"),
+            Tab(text: "All Completed Jobs"),
           ],
         ),
       ),

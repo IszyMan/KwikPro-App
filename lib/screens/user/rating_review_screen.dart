@@ -124,6 +124,7 @@ class _RatingReviewScreenState extends State<RatingReviewScreen> {
           .doc(widget.requestId)
           .update({
         "status": "completed",
+        "isActive": false,
         "timeline.completedAt": FieldValue.serverTimestamp(),
       });
 

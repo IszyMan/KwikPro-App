@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'completed_jobs_screen.dart';
+
 class TechnicianJobsScreen extends StatelessWidget {
   const TechnicianJobsScreen({super.key});
 
@@ -48,37 +50,76 @@ class TechnicianJobsScreen extends StatelessWidget {
 
           final status = d['status'];
 
-          return status != "pending" &&
-              status != "scheduled" &&
-              status != "completed" &&
-              status != "rejected" &&
-              status != "appointmentRejected";
+          return [
+            "accepted",
+            "appointmentAccepted",
+            "onTheWay",
+            "arrived",
+            "inProgress",
+            "completionRequested",
+          ].contains(status);
 
         }).toList();
+
+        final completed = docs.where((d) {
+
+          final status = d['status'];
+
+          return status == "completed";
+
+        }).toList()
+          ..sort((a, b) {
+
+            final aTime =
+                (a['timeline']?['completedAt'] as Timestamp?)?.toDate() ??
+                    DateTime(2000);
+
+            final bTime =
+                (b['timeline']?['completedAt'] as Timestamp?)?.toDate() ??
+                    DateTime(2000);
+
+            return bTime.compareTo(aTime);
+
+          });
 
 
 
         return ListView(
           children: [
+
             _section(
               "Incoming Requests",
               incomingInstant,
               context,
+              emptyMessage: "No incoming requests",
             ),
 
             _section(
               "Incoming Appointments",
               incomingAppointments,
               context,
+              emptyMessage: "No incoming appointments",
             ),
-            _section("Active Jobs", active, context),
+
+            if (active.isNotEmpty)
+              _section("Active Jobs", active, context),
+
+            _completedPreviewSection(
+              completed,
+              context,
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _section(String title, List<QueryDocumentSnapshot> docs, BuildContext context) {
+  Widget _section(
+      String title,
+      List<QueryDocumentSnapshot> docs,
+      BuildContext context, {
+        String emptyMessage = "No data",
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -87,6 +128,23 @@ class TechnicianJobsScreen extends StatelessWidget {
           child: Text(title,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ),
+
+        if (docs.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
+            ),
+            child: Center(
+              child: Text(
+                emptyMessage,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
 
         ...docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
@@ -106,12 +164,66 @@ class TechnicianJobsScreen extends StatelessWidget {
 
                   // SERVICE
                   Text(
-                    data['service'] ?? "",
+                    "${data['service'] ?? ""} needed",
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
+                  const SizedBox(height: 8),
+
+
+
+                  // LOCATION
+                  Text(
+                    "📍 ${data['serviceLocationAddress'] ?? "No location"}",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // DESCRIPTION
+                  if ((data['description'] ?? "").toString().isNotEmpty)
+                    Text(
+                      "📝 ${data['description']}",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+
+
+                  if (data['imageUrl'] != null)
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            backgroundColor: Colors.black,
+                            child: InteractiveViewer(
+                              child: Image.network(data['imageUrl']),
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 10),
+                        height: 80,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            data['imageUrl'],
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
 
                   const SizedBox(height: 10),
 
@@ -329,6 +441,135 @@ class TechnicianJobsScreen extends StatelessWidget {
     );
   }
 
+
+  Widget _completedPreviewSection(
+      List<QueryDocumentSnapshot> docs,
+      BuildContext context,
+      ) {
+
+    if (docs.isEmpty) {
+      return const SizedBox();
+    }
+
+    final latest = docs.first;
+    final data = latest.data() as Map<String, dynamic>;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text(
+            "Latest Completed Job",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+
+        Container(
+          margin: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.green.shade50,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Colors.green.shade200,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                Text(
+                  "${data['service'] ?? ""} needed",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Text(
+                  "📍 ${data['serviceLocationAddress'] ?? "No location"}",
+                ),
+
+                const SizedBox(height: 6),
+
+                if ((data['description'] ?? "").toString().isNotEmpty)
+                  Text(
+                    "📝 ${data['description']}",
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                const SizedBox(height: 8),
+
+                Builder(
+                  builder: (_) {
+
+                    final completedAt =
+                    (data['timeline']?['completedAt'] as Timestamp?)
+                        ?.toDate();
+
+                    return Text(
+                      completedAt != null
+                          ? "📅 Completed on ${completedAt.day}/${completedAt.month}/${completedAt.year}"
+                          : "📅 Completion date unavailable",
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  "✅ Completed",
+                  style: TextStyle(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                          const CompletedJobsScreen(),
+                        ),
+                      );
+
+                    },
+                    child: const Text(
+                      "View All Completed Jobs",
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // ================= PRICE + START JOB =================
 
   void _showPriceDialog(BuildContext context, String id, Map data) {
@@ -376,6 +617,7 @@ class TechnicianJobsScreen extends StatelessWidget {
 
       if (status == "completed") ...{
         "isActive": false,
+        "timeline.completedAt": FieldValue.serverTimestamp(),
       }
     });
 
