@@ -11,12 +11,12 @@ class TermsAndConditions extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
 
             Text(
-              "Terms and Conditions for KwikPro",
+              "Terms & Conditions for KwikPro",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -27,13 +27,16 @@ class TermsAndConditions extends StatelessWidget {
 
             Text(
               "Last Updated: May 2026",
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
             ),
 
             SizedBox(height: 20),
 
             Text(
-              "By accessing or using KwikPro, you agree to these Terms and Conditions.",
+              "Welcome to KwikPro. These Terms & Conditions govern your access to and use of the KwikPro mobile application, website, and related services. By creating an account or using KwikPro, you agree to comply with these Terms & Conditions. If you do not agree, please do not use the platform.",
             ),
 
             SizedBox(height: 24),
@@ -41,86 +44,112 @@ class TermsAndConditions extends StatelessWidget {
             SectionTitle("About KwikPro"),
 
             Text(
-              "KwikPro is a technology platform that connects users with independent technicians and service providers.",
+              "KwikPro is a platform that connects customers with independent technicians and service professionals. KwikPro facilitates discovery, communication, and service requests between users and technicians.",
             ),
 
             SizedBox(height: 10),
 
             Text(
-              "KwikPro is not the direct provider of repair, maintenance, installation, or technical services offered by technicians on the platform.",
+              "KwikPro does not directly provide repair, maintenance, installation, or technical services unless explicitly stated.",
             ),
 
             SizedBox(height: 24),
 
-            SectionTitle("Eligibility"),
+            SectionTitle("User Eligibility"),
 
-            Text(
-              "Users must be at least 18 years old or have consent from a parent or guardian to use the platform.",
-            ),
+            BulletText("Be at least 18 years old or have legal permission from a parent or guardian."),
+            BulletText("Provide accurate and complete registration information."),
+            BulletText("Comply with applicable laws and regulations."),
 
             SizedBox(height: 24),
 
             SectionTitle("User Accounts"),
 
-            Text("Users agree to:"),
-
+            Text("Users are responsible for:"),
             SizedBox(height: 10),
 
-            BulletText("Provide accurate information"),
-            BulletText("Keep login credentials secure"),
-            BulletText("Use the platform responsibly"),
-            BulletText("Avoid fraudulent activities"),
-
-            SizedBox(height: 24),
-
-            SectionTitle("Technician Accounts"),
-
-            Text("Technicians agree to:"),
-
-            SizedBox(height: 10),
-
-            BulletText("Provide accurate professional information"),
-            BulletText("Maintain valid contact details"),
-            BulletText("Submit genuine verification documents"),
-            BulletText("Deliver services professionally"),
+            BulletText("Maintaining confidentiality of account credentials"),
+            BulletText("Keeping account information accurate and updated"),
+            BulletText("Protecting account from unauthorized access"),
+            BulletText("Reporting suspicious activity immediately"),
 
             SizedBox(height: 10),
 
             Text(
-              "Providing false information may result in suspension or permanent removal.",
+              "Users remain responsible for all activities performed through their accounts.",
+            ),
+
+            SizedBox(height: 24),
+
+            SectionTitle("Technician Verification"),
+
+            Text(
+              "Technicians may be required to submit identification and verification documents before using certain features.",
+            ),
+
+            SizedBox(height: 10),
+
+            Text(
+              "KwikPro reserves the right to approve, reject, suspend, or remove technician accounts that fail verification requirements.",
             ),
 
             SizedBox(height: 24),
 
             SectionTitle("Service Requests"),
 
-            Text("Users acknowledge that:"),
+            Text("Technicians are solely responsible for:"),
 
             SizedBox(height: 10),
 
-            BulletText("Technicians are independent service providers"),
-            BulletText("Service outcomes may vary"),
-            BulletText("Prices may differ between technicians"),
-            BulletText("Users are responsible for evaluating service providers before hiring"),
+            BulletText("Quality of services provided"),
+            BulletText("Pricing and quotations"),
+            BulletText("Workmanship and service outcomes"),
+            BulletText("Compliance with applicable laws"),
+
+            SizedBox(height: 10),
+
+            Text(
+              "Customers are responsible for evaluating technicians before hiring.",
+            ),
 
             SizedBox(height: 24),
 
             SectionTitle("Payments"),
 
             Text(
-              "KwikPro facilitates connections between users and technicians only.",
+              "Payments are agreements between customers and technicians unless otherwise stated.",
             ),
 
             SizedBox(height: 10),
 
             Text(
-              "Payments are arranged directly between users and technicians.",
+              "KwikPro may introduce payment processing features in the future.",
+            ),
+
+            SizedBox(height: 24),
+
+            SectionTitle("Prohibited Activities"),
+
+            BulletText("Provide false or misleading information"),
+            BulletText("Impersonate others"),
+            BulletText("Use platform for illegal activities"),
+            BulletText("Upload harmful or abusive content"),
+            BulletText("Attempt unauthorized access"),
+            BulletText("Interfere with platform operations"),
+            BulletText("Use scraping or automated tools without permission"),
+
+            SizedBox(height: 24),
+
+            SectionTitle("User Content"),
+
+            Text(
+              "Users may upload content such as profiles, photos, messages, and reviews.",
             ),
 
             SizedBox(height: 10),
 
             Text(
-              "KwikPro is not responsible for payment disputes outside the platform.",
+              "Users grant KwikPro permission to store and use such content for platform operations.",
             ),
 
             SizedBox(height: 24),
@@ -128,36 +157,23 @@ class TermsAndConditions extends StatelessWidget {
             SectionTitle("Ratings and Reviews"),
 
             Text(
-              "Users may submit ratings and reviews based on genuine experiences.",
-            ),
-
-            SizedBox(height: 10),
-
-            Text(
-              "KwikPro may remove misleading, abusive, or fraudulent reviews.",
+              "KwikPro may remove fraudulent, abusive, or misleading reviews.",
             ),
 
             SizedBox(height: 24),
 
-            SectionTitle("Prohibited Activities"),
+            SectionTitle("Account Suspension and Termination"),
 
-            Text("Users must not:"),
+            BulletText("Violation of Terms & Conditions"),
+            BulletText("Fraudulent activity"),
+            BulletText("Security threats"),
+            BulletText("Abuse of other users"),
+            BulletText("False verification details"),
 
             SizedBox(height: 10),
 
-            BulletText("Engage in fraud"),
-            BulletText("Impersonate others"),
-            BulletText("Upload harmful content"),
-            BulletText("Harass other users"),
-            BulletText("Circumvent platform rules"),
-            BulletText("Use the platform for illegal activities"),
-
-            SizedBox(height: 24),
-
-            SectionTitle("Suspension and Termination"),
-
             Text(
-              "KwikPro may suspend or terminate accounts that violate these Terms.",
+              "Users may request account deletion at any time.",
             ),
 
             SizedBox(height: 24),
@@ -165,44 +181,33 @@ class TermsAndConditions extends StatelessWidget {
             SectionTitle("Limitation of Liability"),
 
             Text(
-              "KwikPro provides a marketplace platform and does not guarantee:",
+              "KwikPro acts solely as a technology platform that connects customers and independent technicians. KwikPro does not supervise, control, employ, or guarantee the conduct, performance, pricing, safety, legality, or reliability of any technician.",
             ),
 
             SizedBox(height: 10),
 
-            BulletText("Service quality"),
-            BulletText("Technician performance"),
-            BulletText("Availability of technicians"),
-            BulletText("Successful completion of requested services"),
+            Text(
+              "To the maximum extent permitted by law, KwikPro shall not be liable for any damages, losses, or issues arising from the use of the platform or services provided by technicians.",
+            ),
 
             SizedBox(height: 10),
 
-            Text(
-              "KwikPro is not liable for indirect, incidental, or consequential damages arising from use of the platform.",
-            ),
+            Text("This includes but is not limited to:"),
+
+            SizedBox(height: 10),
+
+            BulletText("Service quality or workmanship"),
+            BulletText("Financial loss or payment disputes"),
+            BulletText("Property damage or personal injury"),
+            BulletText("Delays, cancellations, or failed service completion"),
+            BulletText("Disputes between users and technicians"),
 
             SizedBox(height: 24),
 
-            SectionTitle("Job Cancellation"),
+            SectionTitle("Indemnification"),
 
             Text(
-              "Users and technicians may cancel a service request before work begins. Repeated cancellations may result in restrictions.",
-            ),
-
-            SizedBox(height: 24),
-
-            SectionTitle("Safety Disclaimer"),
-
-            Text(
-              "Users should exercise caution when engaging technicians. Always verify service details before granting access to your property.",
-            ),
-
-            SizedBox(height: 24),
-
-            SectionTitle("Account Deletion"),
-
-            Text(
-              "Users may request account deletion through the app or by contacting support.",
+              "Users agree to indemnify and hold KwikPro harmless from claims, damages, and losses resulting from misuse of the platform.",
             ),
 
             SizedBox(height: 24),
@@ -210,7 +215,15 @@ class TermsAndConditions extends StatelessWidget {
             SectionTitle("Intellectual Property"),
 
             Text(
-              "KwikPro branding, design, software, and content remain the property of KwikPro and may not be copied or reused without permission.",
+              "All KwikPro branding, software, and content remain the property of KwikPro and may not be copied or reused without permission.",
+            ),
+
+            SizedBox(height: 24),
+
+            SectionTitle("Privacy"),
+
+            Text(
+              "Use of KwikPro is also governed by our Privacy Policy.",
             ),
 
             SizedBox(height: 24),
@@ -218,23 +231,25 @@ class TermsAndConditions extends StatelessWidget {
             SectionTitle("Changes to Terms"),
 
             Text(
-              "We may update these Terms periodically.",
-            ),
-
-            SizedBox(height: 10),
-
-            Text(
-              "Continued use of KwikPro means you accept the updated Terms.",
+              "KwikPro may update these Terms at any time. Continued use means acceptance of updated Terms.",
             ),
 
             SizedBox(height: 24),
 
-            SectionTitle("Contact Information"),
+            SectionTitle("Governing Law"),
+
+            Text(
+              "These Terms are governed by the laws of the jurisdiction where KwikPro operates.",
+            ),
+
+            SizedBox(height: 24),
+
+            SectionTitle("Contact Us"),
 
             Text("KwikPro Support"),
-            SizedBox(height: 10),
-            Text("Email: support@kwikpro.com"),
-            Text("Website: kwikpro.com"),
+            SizedBox(height: 8),
+            Text("Phone: +234 7067455144"),
+            Text("Email: iszifyaws@gmail.com.com"),
 
             SizedBox(height: 40),
           ],
@@ -247,16 +262,16 @@ class TermsAndConditions extends StatelessWidget {
 /* ================= REUSABLE WIDGETS ================= */
 
 class SectionTitle extends StatelessWidget {
-  final String title;
+  final String text;
 
-  const SectionTitle(this.title, {super.key});
+  const SectionTitle(this.text, {super.key});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 12),
       child: Text(
-        title,
+        text,
         style: const TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,

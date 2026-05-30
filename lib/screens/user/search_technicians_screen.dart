@@ -180,7 +180,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Find The Best Technicians Near You')),
+      appBar: AppBar(title: Text('Find Best Technicians Near You')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(

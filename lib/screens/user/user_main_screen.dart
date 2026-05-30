@@ -35,23 +35,100 @@ class _UserMainScreenState extends State<UserMainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.phone), label: 'My Jobs'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.support_agent), label: 'Support'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.person), label: 'Profile'),
+      bottomNavigationBar: SizedBox(
+        height: 85,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // 🔵 BACKGROUND NAV BAR
+            Container(
+              height: 65,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(35),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(Icons.home, "Home", 0),
+                  _buildNavItem(Icons.history, "Jobs", 1),
 
+                  const SizedBox(width: 50), // SPACE FOR FLOATING BUTTON
+
+                  _buildNavItem(Icons.support_agent, "Support", 3),
+                  _buildNavItem(Icons.person, "Profile", 4),
+                ],
+              ),
+            ),
+
+            // 🔥 FLOATING CENTER BUTTON (MTN STYLE)
+            Positioned(
+              top: -25,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () => _onItemTapped(2),
+                  child: Container(
+                    width: 65,
+                    height: 65,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.blueAccent,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blueAccent.withOpacity(0.4),
+                          blurRadius: 15,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.search,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _selectedIndex == index;
+
+    return GestureDetector(
+      onTap: () => _onItemTapped(index),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? Colors.blueAccent : Colors.grey,
+            size: isSelected ? 28 : 24,
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: isSelected ? Colors.blueAccent : Colors.grey,
+              fontWeight:
+              isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );
