@@ -7,10 +7,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kwikpro/screens/technician/edit_technician_profile_screen.dart';
 import 'package:kwikpro/screens/technician/technician_job_history_screen.dart';
 import 'package:kwikpro/screens/technician/technician_notification_screen.dart';
+import 'package:kwikpro/screens/user/privacy_policy.dart';
 import '../onboarding/welcome_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
+
+import '../user/terms_and_conditions.dart';
 
 class TechnicianHomeScreen extends ConsumerStatefulWidget {
   const TechnicianHomeScreen({super.key});
@@ -779,16 +782,35 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
             ),
 
             ListTile(
-              leading: Icon(Icons.star),
-              title: Text("Reviews"),
-              onTap: () {},
+              leading: Icon(Icons.history),
+              title: Text("Privacy Policy"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PrivacyPolicy(),
+                  ),
+                );
+              },
             ),
 
             ListTile(
-              leading: Icon(Icons.settings),
-              title: Text("Settings"),
-              onTap: () {},
+              leading: const Icon(Icons.history),
+              title: const Text("Terms and Condition"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                    const TermsAndConditions(),
+                  ),
+                );
+              },
             ),
+
+
+
+
 
             ListTile(
               leading: Icon(Icons.delete_forever, color: Colors.red),

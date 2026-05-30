@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kwikpro/screens/user/privacy_policy.dart';
+import 'package:kwikpro/screens/user/terms_and_conditions.dart';
 
 import 'package:kwikpro/screens/user/user_job_history_screen.dart';
 import '../../providers/auth_provider.dart';
@@ -289,6 +291,34 @@ class _UserProfileScreenState
                       MaterialPageRoute(
                         builder: (_) =>
                         const UserJobHistoryScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text("Privacy Policy"),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                        const PrivacyPolicy(),
+                      ),
+                    );
+                  },
+                ),
+
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text("Terms and Condition"),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                        const TermsAndConditions(),
                       ),
                     );
                   },

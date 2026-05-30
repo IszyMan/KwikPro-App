@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../providers/technician_signup_controller.dart';
+import '../../user/privacy_policy.dart';
+import '../../user/terms_and_conditions.dart';
 
 class Step4Verification extends ConsumerWidget {
   const Step4Verification({super.key});
@@ -13,10 +15,14 @@ class Step4Verification extends ConsumerWidget {
   static const cloudName = 'dcresvgii';
   static const uploadPreset = 'unsigned_preset';
 
+
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final picker = ImagePicker();
     final state = ref.watch(technicianSignupController);
+
+    final acceptedLegal = ValueNotifier(false);
 
     ///  Upload (Web + Mobile)
     Future<String?> uploadToCloudinary(XFile file) async {
@@ -178,19 +184,100 @@ class Step4Verification extends ConsumerWidget {
             children: [
               imageCard(),
 
+
+
+              const SizedBox(height: 20),
+
+              ValueListenableBuilder(
+                valueListenable: acceptedLegal,
+                builder: (context, value, _) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: value,
+                        onChanged: (val) {
+                          acceptedLegal.value = val ?? false;
+                        },
+                      ),
+
+                      Expanded(
+                        child: Wrap(
+                          children: [
+                            const Text("By continuing, you agree to KwikPro's "),
+
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const PrivacyPolicy(),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                "Privacy Policy",
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+
+                            const Text(" and "),
+
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const TermsAndConditions(),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                "Terms & Conditions",
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              const Text(
+                "Your data is securely stored and used only for identity verification and safety.",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+
               const SizedBox(height: 30),
 
-              ElevatedButton(
-                onPressed: (state.ninImage == null || state.ninImage!.isEmpty)
-                    ? null
-                    : () {
-                  ref
-                      .read(technicianSignupController.notifier)
-                      .submit(context, ref);
+              ValueListenableBuilder(
+                valueListenable: acceptedLegal,
+                builder: (context, value, _) {
+                  return ElevatedButton(
+                    onPressed: (
+                        value &&
+                            state.ninImage != null &&
+                            state.ninImage!.isNotEmpty
+                    )
+                        ? () {
+                      ref
+                          .read(technicianSignupController.notifier)
+                          .submit(context, ref);
+                    }
+                        : null,
+                    child: state.isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text("Finish"),
+                  );
                 },
-                child: state.isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text("Finish"),
               ),
             ],
           ),

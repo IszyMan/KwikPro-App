@@ -148,7 +148,7 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen>
                   color: Colors.green,
                 ),
               ),
-              const Text("Your customers ratings"),
+              Text("Your customers ratings"),
               Text("Avg Price: ${avgPrice.toStringAsFixed(1)}"),
               Text("Avg Service: ${avgService.toStringAsFixed(1)}"),
               Text("Avg Overall: ${avgOverall.toStringAsFixed(1)}"),
