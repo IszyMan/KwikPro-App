@@ -213,7 +213,6 @@ class _UserProfileScreenState
           return SafeArea(
             child: Column(
               children: [
-
                 /// HEADER
                 Container(
                   width: double.infinity,
@@ -221,7 +220,6 @@ class _UserProfileScreenState
                   color: Colors.blue,
                   child: Column(
                     children: [
-
                       CircleAvatar(
                         radius: 40,
                         backgroundImage: profilePic.isNotEmpty
@@ -231,9 +229,7 @@ class _UserProfileScreenState
                             ? const Icon(Icons.person, size: 40)
                             : null,
                       ),
-
                       const SizedBox(height: 10),
-
                       Text(
                         name,
                         style: const TextStyle(
@@ -242,23 +238,16 @@ class _UserProfileScreenState
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       const SizedBox(height: 5),
-
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 16,
-                            color: Colors.white70,
-                          ),
+                          const Icon(Icons.location_on,
+                              size: 16, color: Colors.white70),
                           const SizedBox(width: 4),
                           Text(
                             location,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                            ),
+                            style: const TextStyle(color: Colors.white70),
                           ),
                         ],
                       ),
@@ -266,117 +255,111 @@ class _UserProfileScreenState
                   ),
                 ),
 
-                const SizedBox(height: 10),
-
-                ListTile(
-                  leading: const Icon(Icons.edit),
-                  title: const Text("Edit Profile"),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                        const EditUserProfileScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                ListTile(
-                  leading: const Icon(Icons.history),
-                  title: const Text("Job History"),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                        const UserJobHistoryScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                ListTile(
-                  leading: const Icon(Icons.history),
-                  title: const Text("Privacy Policy"),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                        const PrivacyPolicy(),
-                      ),
-                    );
-                  },
-                ),
-
-                ListTile(
-                  leading: const Icon(Icons.history),
-                  title: const Text("Terms and Condition"),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                        const TermsAndConditions(),
-                      ),
-                    );
-                  },
-                ),
-
-                ListTile(
-                  leading: const Icon(
-                    Icons.delete_forever,
-                    color: Colors.red,
-                  ),
-                  title: const Text(
-                    "Delete Account",
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  onTap: _showDeleteAccountDialog,
-                ),
-
-                const Spacer(),
-
-                const Divider(),
-
-                /// LOGOUT (FIXED REF USAGE)
-                ListTile(
-                  leading: const Icon(
-                    Icons.logout,
-                    color: Colors.red,
-                  ),
-                  title: const Text("Logout"),
-                  onTap: () async {
-                    try {
-                      final authService =
-                      ref.read(authServiceProvider);
-
-                      final authNotifier =
-                      ref.read(authProvider.notifier);
-
-                      await authService.signOut();
-                      authNotifier.logout();
-
-                      if (!mounted) return;
-
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                          const WelcomeScreen(),
+                /// BODY (scrollable)
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.edit),
+                          title: const Text("Edit Profile"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EditUserProfileScreen(),
+                              ),
+                            );
+                          },
                         ),
-                            (route) => false,
-                      );
-                    } catch (e) {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(
-                        SnackBar(
-                          content: Text("Logout failed: $e"),
+
+                        ListTile(
+                          leading: const Icon(Icons.history),
+                          title: const Text("Job History"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const UserJobHistoryScreen(),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    }
-                  },
+
+                        ListTile(
+                          leading: const Icon(Icons.privacy_tip),
+                          title: const Text("Privacy Policy"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyPolicy(),
+                              ),
+                            );
+                          },
+                        ),
+
+                        ListTile(
+                          leading: const Icon(Icons.rule),
+                          title: const Text("Terms and Condition"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const TermsAndConditions(),
+                              ),
+                            );
+                          },
+                        ),
+
+                        ListTile(
+                          leading: const Icon(Icons.delete_forever,
+                              color: Colors.red),
+                          title: const Text(
+                            "Delete Account",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          onTap: _showDeleteAccountDialog,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                /// LOGOUT (fixed at bottom)
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Divider(height: 1),
+
+                    ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.red),
+                      title: const Text("Logout"),
+                      onTap: () async {
+                        try {
+                          final authService = ref.read(authServiceProvider);
+                          final authNotifier = ref.read(authProvider.notifier);
+
+                          await authService.signOut();
+                          authNotifier.logout();
+
+                          if (!mounted) return;
+
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const WelcomeScreen(),
+                            ),
+                                (route) => false,
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Logout failed: $e")),
+                          );
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),

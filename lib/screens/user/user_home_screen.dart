@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:kwikpro/providers/auth_provider.dart';
 import 'package:kwikpro/screens/onboarding/welcome_screen.dart';
-
+import 'package:kwikpro/screens/user/privacy_policy.dart';
+import 'package:kwikpro/screens/user/terms_and_conditions.dart';
 import '../../widgets/service_card.dart';
-
 import 'package:flutter/services.dart';
 import 'package:kwikpro/screens/user/edit_user_profile_screen.dart';
 import 'package:kwikpro/screens/user/user_job_history_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class UserHomeScreen extends ConsumerStatefulWidget {
   const UserHomeScreen({super.key});
@@ -254,29 +256,210 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   }
 
 
+  Future<List<dynamic>> searchLocations(String query) async {
+    try {
+      if (query.trim().isEmpty) return [];
+
+      final url = Uri.parse(
+        "https://nominatim.openstreetmap.org/search"
+            "?q=${Uri.encodeComponent(query + ' lagos nigeria')}"
+            "&format=json"
+            "&addressdetails=1"
+            "&limit=8",
+      );
+
+      final response = await http.get(url, headers: {
+        "User-Agent": "KwikProApp/1.0 (your_email@example.com)",
+      });
+
+      if (response.statusCode != 200) {
+        print("Search error: ${response.body}");
+        return [];
+      }
+
+      final data = json.decode(response.body);
+
+      if (data is List) {
+        return data;
+      }
+
+      return [];
+    } catch (e) {
+      print("SEARCH ERROR: $e");
+      return [];
+    }
+  }
+
+
+  void _openLocationPicker() {
+    final controller = TextEditingController();
+    List<dynamic> results = [];
+    bool loading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                top: 16,
+                left: 16,
+                right: 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Choose Location",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  TextField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                      hintText: "Search Lekki, Ajah, Ikeja...",
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (value) async {
+                      setModalState(() {
+                        loading = true;
+                      });
+
+                      results = await searchLocations(value);
+
+                      setModalState(() {
+                        loading = false;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  if (loading)
+                    CircularProgressIndicator()
+                  else
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: results.length,
+                        itemBuilder: (context, index) {
+                          final item = results[index];
+
+                          final displayName = item["display_name"] ?? "Unknown";
+
+                          return ListTile(
+                            leading: Icon(Icons.location_on),
+                            title: Text(displayName),
+                            onTap: () async {
+                              final lat = double.parse(item["lat"]);
+                              final lng = double.parse(item["lon"]);
+
+                              Navigator.pop(context);
+
+                              await _updateUserLocation(lat, lng);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _updateUserLocation(double lat, double lng) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    final address = await _getAddressFromLatLng(lat, lng);
+
+    setState(() {
+      userLat = lat;
+      userLng = lng;
+      location = address;
+    });
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({
+      'lat': lat,
+      'lng': lng,
+      'currentAddress': address,
+    });
+  }
+
+
 
   Future<String> _getAddressFromLatLng(double lat, double lng) async {
     try {
-      //print("DEBUG LAT: $lat, LNG: $lng");
+      final url = Uri.parse(
+        "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1",
+      );
 
-      final placemarks = await placemarkFromCoordinates(lat, lng);
+      final response = await http.get(
+        url,
+        headers: {
+          // REQUIRED by Nominatim policy
+          "User-Agent": "KwikProApp/1.0 (your_email@example.com)",
+        },
+      );
 
-      if (placemarks.isEmpty) return "Unknown";
+      if (response.statusCode != 200) {
+        print("OSM ERROR: ${response.body}");
+        return "Unknown";
+      }
 
-      final place = placemarks.first;
+      final data = json.decode(response.body);
 
-      return [
-        place.subLocality,
-        place.locality,
-        place.subAdministrativeArea,
-        place.administrativeArea,
-        place.country
-      ].firstWhere(
-            (e) => e != null && e.isNotEmpty,
-        orElse: () => "Unknown",
-      )!;
+      final address = data["address"];
+
+      final suburb = address?["suburb"] ??
+          address?["neighbourhood"] ??
+          address?["residential"] ??
+          "";
+
+      final city = address?["city"] ??
+          address?["town"] ??
+          address?["village"] ??
+          address?["municipality"] ??
+          "";
+
+      final district = address?["county"] ??
+          address?["state_district"] ??
+          "";
+
+      final state = address?["state"] ?? "";
+
+      String result = "";
+
+      if (suburb.isNotEmpty) {
+        result += suburb;
+      }
+
+      if (district.isNotEmpty) {
+        result += result.isEmpty ? district : ", $district";
+      }
+
+      if (state.isNotEmpty) {
+        result += result.isEmpty ? state : ", $state";
+      }
+
+      return result.isNotEmpty ? result : "Unknown";
+
     } catch (e) {
-      print("GEOCODING ERROR: $e");
+      print("OSM GEOCODING ERROR: $e");
       return "Unknown";
     }
   }
@@ -284,42 +467,61 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
 
   void _loadUser() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
     final doc = await FirebaseFirestore.instance
         .collection('users')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .doc(uid)
         .get();
+
+    if (!doc.exists) {
+      print("User document does not exist");
+      return;
+    }
 
     final data = doc.data();
 
-    String fetchedLocation = data?['currentAddress'] ?? 'Unknown';
     double? lat = data?['lat'];
     double? lng = data?['lng'];
 
+    print("Testing reverse geocode...");
+    print("Lat: $lat");
+    print("Lng: $lng");
+
+    // ✅ FIRST SET BASIC USER DATA
     setState(() {
       name = data?['name'] ?? 'User';
       profilePic = data?['profilePic'] ?? '';
-      location = fetchedLocation;
+      location = data?['currentAddress'] ?? 'Unknown';
       userLat = lat;
       userLng = lng;
     });
 
-    //  Now reverse geocode if lat/lng exists
-    if (lat != null && lng != null) {
+    //  SAFE CHECK BEFORE GEOCODING
+    if (lat == null || lng == null) {
+      print("No coordinates found, skipping geocoding");
+      return;
+    }
+
+    try {
       final newAddress = await _getAddressFromLatLng(lat, lng);
 
-      if (newAddress != "Unknown") {
+      print("ADDRESS FOUND: $newAddress");
+
+      if (newAddress.isNotEmpty && newAddress != "Unknown") {
         setState(() {
           location = newAddress;
         });
-      }
 
-      // (optional) update firestore with fresh address
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser!.uid)
-          .update({
-        'currentAddress': newAddress,
-      });
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .update({
+          'currentAddress': newAddress,
+        });
+      }
+    } catch (e) {
+      print("Reverse geocode error: $e");
     }
   }
 
@@ -357,9 +559,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
                     // Future: Change button
                     GestureDetector(
-                      onTap: () {
-                        // we’ll implement this next step
-                      },
+                      onTap: _openLocationPicker,
                       child: Text(
                         "Change",
                         style: TextStyle(
@@ -544,6 +744,34 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
                   MaterialPageRoute(
                     builder: (_) =>
                     const UserJobHistoryScreen(),
+                  ),
+                );
+              },
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.privacy_tip),
+              title: const Text("Privacy Policy"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                    const PrivacyPolicy(),
+                  ),
+                );
+              },
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.rule),
+              title: const Text("Terms and Condition"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                    const TermsAndConditions(),
                   ),
                 );
               },
