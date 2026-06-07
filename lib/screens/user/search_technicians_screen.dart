@@ -1,43 +1,40 @@
-import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:flutter/foundation.dart';
-import 'package:kwikpro/screens/user/technician_search_result_screen.dart';
 import 'dart:convert';
 import 'dart:io';
 
-
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+
+import 'technician_search_result_screen.dart';
 
 class SearchTechnicianScreen extends StatefulWidget {
   const SearchTechnicianScreen({super.key});
 
   @override
-  _SearchTechnicianScreenState createState() => _SearchTechnicianScreenState();
+  State<SearchTechnicianScreen> createState() =>
+      _SearchTechnicianScreenState();
 }
 
 class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
   final _formKey = GlobalKey<FormState>();
+
   String? _selectedService;
-  String _serviceLocationAddress = '';
+  String _location = "";
+  String _issue = "";
 
   final TextEditingController _issueController = TextEditingController();
-  String _issueDescription = '';
 
   bool _loading = false;
-  bool _isSearching = false;
-  bool _hasSearched = false;
 
-  String _imageUrl = '';
-  XFile? _selectedImage;
+  XFile? _image;
+  String _imageUrl = "";
+
   final ImagePicker _picker = ImagePicker();
-  static const cloudName = 'dcresvgii';
-  static const uploadPreset = 'unsigned_preset';
 
   double? userLat;
   double? userLng;
-
-  Map<String, dynamic>? currentRequest;
 
   final List<String> services = [
     "Car Mechanic",
@@ -60,14 +57,8 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
       "German Car",
       "American Car",
       "Japanese Car",
-
     ],
-
-    "Electrician": [
-      "Wiring",
-      "Socket Fixing",
-      "Lighting Installation",
-    ],
+    "Electrician": ["Wiring", "Socket Fixing", "Lighting Installation"],
     "AC Repairer": [
       "AC Gas Filling",
       "AC Repair",
@@ -88,10 +79,9 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
       "Carburetor",
     ],
     "Fridge Repairer": [
-      "Freezer Repair"
-          "Gas Filling",
+      "Freezer Repair",
+      "Gas Filling",
       "Refrigerator Repair",
-
     ],
     "Painter": [
       "Interior Painting",
@@ -101,35 +91,33 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
     ]
   };
 
+  static const cloudName = 'dcresvgii';
+  static const uploadPreset = 'unsigned_preset';
+
   Future<String?> uploadToCloudinary(XFile file) async {
     final uri = Uri.parse(
-      'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+      "https://api.cloudinary.com/v1_1/$cloudName/image/upload",
     );
 
     final bytes = await file.readAsBytes();
 
-    final request = http.MultipartRequest('POST', uri)
+    final request = http.MultipartRequest("POST", uri)
       ..fields['upload_preset'] = uploadPreset
-      ..files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: file.name,
-        ),
-      );
+      ..files.add(http.MultipartFile.fromBytes(
+        "file",
+        bytes,
+        filename: file.name,
+      ));
 
     final response = await request.send();
-
-    final responseBody = await response.stream.bytesToString();
+    final body = await response.stream.bytesToString();
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(responseBody);
-      return data['secure_url'];
-    } else {
-      print(responseBody);
-      return null;
+      return jsonDecode(body)['secure_url'];
     }
+    return null;
   }
+
   Future<void> pickImage() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -137,13 +125,13 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: Icon(Icons.camera_alt),
-            title: Text("Take Picture"),
+            leading: const Icon(Icons.camera_alt),
+            title: const Text("Camera"),
             onTap: () => Navigator.pop(context, ImageSource.camera),
           ),
           ListTile(
-            leading: Icon(Icons.photo),
-            title: Text("Choose From Gallery"),
+            leading: const Icon(Icons.photo),
+            title: const Text("Gallery"),
             onTap: () => Navigator.pop(context, ImageSource.gallery),
           ),
         ],
@@ -152,223 +140,35 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
 
     if (source == null) return;
 
-    final pickedFile = await _picker.pickImage(source: source);
+    final picked = await _picker.pickImage(source: source);
+    if (picked == null) return;
 
-    if (pickedFile == null) return;
+    setState(() => _image = picked);
 
-    setState(() {
-      _selectedImage = pickedFile;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Uploading image...")),
-    );
-
-    final uploadedUrl = await uploadToCloudinary(pickedFile);
-
-    if (uploadedUrl != null) {
-      setState(() {
-        _imageUrl = uploadedUrl;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Image uploaded")),
-      );
+    final url = await uploadToCloudinary(picked);
+    if (url != null) {
+      setState(() => _imageUrl = url);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Find Best Technicians Near You')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Form for search input
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Service Location (Where service is needed)',
-                        hintText: 'e.g. 12 Allen Avenue, Ikeja',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (val) => _serviceLocationAddress = val,
-                      validator: (val) =>
-                      val == null || val.isEmpty ? 'Enter service location' : null,
-                    ),
-                    SizedBox(height: 15),
-
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'Select Service',
-                        border: OutlineInputBorder(),
-                      ),
-                      initialValue: _selectedService,
-                      items: services
-                          .map((s) =>
-                          DropdownMenuItem(value: s, child: Text(s)))
-                          .toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedService = val;
-                          _selectedSkills = [];
-                        });
-                      },
-                      validator: (val) =>
-                      val == null ? 'Please select a service' : null,
-                    ),
-
-                    SizedBox(height: 15),
-                    if (_selectedService != null &&
-                        serviceSkills.containsKey(_selectedService))
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: 10),
-          
-                          Text(
-                            "Service Description",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-          
-                          ...serviceSkills[_selectedService!]!.map((skill) {
-                            final isSelected = _selectedSkills.contains(skill);
-          
-                            return CheckboxListTile(
-                              title: Text(skill),
-                              value: isSelected,
-                              onChanged: (val) {
-                                setState(() {
-                                  if (val == true) {
-                                    _selectedSkills.add(skill);
-                                  } else {
-                                    _selectedSkills.remove(skill);
-                                  }
-
-                                  // Auto-fill description box
-                                  _issueController.text = _selectedSkills.join(', ');
-
-                                  // Update issue description variable too
-                                  _issueDescription = _issueController.text;
-                                });
-                              },
-                            );
-                          }).toList(),
-                        ],
-                      ),
-
-                    TextFormField(
-                      controller: _issueController,
-                      decoration: InputDecoration(
-                        labelText: 'Describe your issue',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 3,
-                      onChanged: (val) => _issueDescription = val,
-                      validator: (val) {
-                        if ((_selectedSkills.isEmpty) &&
-                            (val == null || val.trim().isEmpty)) {
-                          return 'Describe your issue';
-                        }
-
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 15),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Upload Job Image (Optional)",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-
-                        SizedBox(height: 10),
-
-                        if (_selectedImage != null)
-                          Container(
-                            height: 140,
-                            width: double.infinity,
-                            clipBehavior: Clip.hardEdge,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: kIsWeb
-                              ? Image.network(
-                              _selectedImage!.path,
-                                fit: BoxFit.cover,
-                                )
-                                    : Image.file(
-                                File(_selectedImage!.path),
-                                fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-
-
-                        SizedBox(height: 10),
-
-                        ElevatedButton.icon(
-                          onPressed: pickImage,
-                          icon: Icon(Icons.camera_alt),
-                          label: Text("Take / Upload Picture"),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _loading ? null : _searchTechnicians,
-                      child: _loading
-                          ? CircularProgressIndicator(color: Colors.white)
-                          : Text('Search'),
-                    ),
-                  ],
-                ),
-              ),
-          
-          
-          
-          
-          
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Search technicians and get user location
   Future<void> _searchTechnicians() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _loading = true;
-      _isSearching = true;
-      _hasSearched = true;
-    });
+    if (_selectedService == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a service")),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
 
     try {
-      final pos = await Geolocator.getCurrentPosition(
-          locationSettings: LocationSettings(accuracy: LocationAccuracy.high));
+      final pos = await Geolocator.getCurrentPosition();
 
-      setState(() {
-        userLat = pos.latitude;
-        userLng = pos.longitude;
-      });
+      userLat = pos.latitude;
+      userLng = pos.longitude;
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -376,22 +176,236 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
             service: _selectedService,
             userLat: userLat,
             userLng: userLng,
-            serviceLocationAddress: _serviceLocationAddress,
-            issueDescription: _issueDescription,
+            serviceLocationAddress: _location,
+            issueDescription: _issue,
             imageUrl: _imageUrl,
             selectedSkills: _selectedSkills,
           ),
         ),
       );
-
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Failed to get location")));
-    } finally {
-      setState(() {
-        _loading = false;
-        _isSearching = false;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Location error")),
+      );
     }
+
+    setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(title: const Text("Find Technician")),
+
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+
+              /// HEADER
+              _card(
+                color: Colors.blue,
+                child: const Text(
+                  "Tell us what you need — we’ll match the best technician near you",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              /// LOCATION
+              _inputCard(
+                child: TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: "Enter Service Location",
+                    prefixIcon: Icon(Icons.location_on),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (v) => _location = v,
+                  validator: (v) =>
+                  v == null || v.isEmpty ? "Enter location" : null,
+                ),
+              ),
+
+              /// SERVICE
+              _inputCard(
+                child: DropdownButtonFormField(
+                  value: _selectedService,
+                  decoration: const InputDecoration(
+                    labelText: "Select Service",
+                    border: InputBorder.none,
+                  ),
+                  items: services
+                      .map((e) => DropdownMenuItem(
+                    value: e,
+                    child: Text(e),
+                  ))
+                      .toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _selectedService = v;
+                      _selectedSkills.clear();
+                    });
+                  },
+                ),
+              ),
+
+              /// SKILLS (UNCHANGED)
+              if (_selectedService != null &&
+                  serviceSkills.containsKey(_selectedService))
+                _inputCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Service Description",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      ...serviceSkills[_selectedService!]!.map((skill) {
+                        final selected = _selectedSkills.contains(skill);
+
+                        return CheckboxListTile(
+                          value: selected,
+                          title: Text(skill),
+                          onChanged: (val) {
+                            setState(() {
+                              if (val == true) {
+                                _selectedSkills.add(skill);
+                              } else {
+                                _selectedSkills.remove(skill);
+                              }
+
+                              _issueController.text =
+                                  _selectedSkills.join(', ');
+                              _issue = _issueController.text;
+                            });
+                          },
+                        );
+                      })
+                    ],
+                  ),
+                ),
+              _inputCard(
+                child: TextFormField(
+                  controller: _issueController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: "Describe your issue",
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (v) => _issue = v,
+                ),
+              ),
+
+
+              _inputCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Upload Job Image (Optional)"),
+                          const SizedBox(height: 6),
+                          ElevatedButton.icon(
+                            onPressed: pickImage,
+                            icon: const Icon(Icons.upload),
+                            label: const Text("Upload"),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+
+                    if (_image != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          height: 70,
+                          width: 70,
+                          child: kIsWeb
+                              ? Image.network(_image!.path, fit: BoxFit.cover)
+                              : Image.file(File(_image!.path),
+                              fit: BoxFit.cover),
+                        ),
+                      )
+                    else
+                      Container(
+                        height: 70,
+                        width: 70,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.image),
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// SEARCH BUTTON (PROMINENT)
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: _loading ? null : _searchTechnicians,
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                    "SEARCH TECHNICIANS",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _card({required Widget child, Color? color}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color ?? Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _inputCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: child,
+    );
   }
 }

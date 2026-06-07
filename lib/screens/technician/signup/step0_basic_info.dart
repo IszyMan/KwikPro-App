@@ -13,7 +13,7 @@ class _Step0BasicInfoState extends ConsumerState<Step0BasicInfo> {
   late TextEditingController nameController;
 
   final services = const [
-    "Car Mechanic"
+    "Car Mechanic",
     "AC Repairer",
     "Plumber",
     "Generator Repairer",

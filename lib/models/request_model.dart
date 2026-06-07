@@ -11,6 +11,7 @@ class RequestModel {
   final double userLat;
   final double userLng;
   final String status;
+  final bool completionDialogShown;
   final double? price;
   final String type;
   final Timestamp? appointmentDate;
@@ -27,6 +28,7 @@ class RequestModel {
     required this.userLat,
     required this.userLng,
     required this.status,
+    required this.completionDialogShown,
     this.price,
     required this.type,
     this.appointmentDate,
@@ -44,6 +46,7 @@ class RequestModel {
       "userLat": userLat,
       "userLng": userLng,
       "status": status,
+      "completionDialogShown": completionDialogShown,
       "price": price,
       "type": type,
       "appointmentDate": appointmentDate,

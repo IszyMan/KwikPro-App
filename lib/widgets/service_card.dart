@@ -4,14 +4,8 @@ import '../screens/user/service_technician_screen.dart';
 
 class ServiceCard extends StatelessWidget {
   final String service;
-  final double? userLat;
-  final double? userLng;
 
-  const ServiceCard({
-    required this.service,
-    this.userLat,
-    this.userLng,
-  });
+  const ServiceCard({required this.service});
 
   @override
   Widget build(BuildContext context) {
@@ -22,11 +16,7 @@ class ServiceCard extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (_) =>
-                ServiceTechniciansScreen(
-                  service: service,
-                  userLat: userLat,
-                  userLng: userLng,
-                ),
+                ServiceTechniciansScreen(service: service),
           ),
         );
       },

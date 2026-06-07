@@ -18,6 +18,8 @@ class ActiveJobScreen extends StatefulWidget {
 }
 
 class _ActiveJobScreenState extends State<ActiveJobScreen> {
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,69 +31,69 @@ class _ActiveJobScreenState extends State<ActiveJobScreen> {
               .collection('requests')
               .doc(widget.requestId)
               .snapshots(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final data = snapshot.data!.data() as Map<String, dynamic>;
+              final status = data['status'];
+              final dialogShown = data['completionDialogShown'] ?? false;
+
+              if (status == "completionRequested" && dialogShown == false) {
+                FirebaseFirestore.instance
+                    .collection('requests')
+                    .doc(widget.requestId)
+                    .update({
+                  "completionDialogShown": true,
+                });
+
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    _showCompletionDialog(context);
+                  }
+                });
+              }
+
+              return _buildUI(status);
             }
-
-            final data = snapshot.data!.data() as Map<String, dynamic>;
-            final status = data['status'];
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildTechnicianInfo(),
-
-                const SizedBox(height: 20),
-
-                Text(
-                  "Status: $status",
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ================= USER FLOW =================
-
-                if (status == "accepted")
-                  const Text("Technician has accepted your request"),
-
-                if (status == "onTheWay")
-                  const Text("🚗 Technician is on the way"),
-
-                if (status == "arrived")
-                  const Text("📍 Technician has arrived"),
-
-                if (status == "started")
-                  const Text("🛠 Job in progress..."),
-
-                if (status == "completionRequested")
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => RatingReviewScreen(
-                            requestId: widget.requestId,
-                            technician: widget.technician,
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text("Mark as Completed"),
-                  ),
-
-                if (status == "completed")
-                  const Text(
-                    "✅ Job Completed",
-                    style: TextStyle(color: Colors.green),
-                  ),
-              ],
-            );
-          },
         ),
       ),
+    );
+  }
+
+  Widget _buildUI(String status) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTechnicianInfo(),
+        const SizedBox(height: 20),
+
+        Text(
+          "Status: $status",
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+
+        const SizedBox(height: 20),
+
+        if (status == "accepted")
+          const Text("Technician has accepted your request"),
+
+        if (status == "onTheWay")
+          const Text("🚗 Technician is on the way"),
+
+        if (status == "arrived")
+          const Text("📍 Technician has arrived"),
+
+        if (status == "started")
+          const Text("🛠 Job in progress..."),
+
+        if (status == "completed")
+          const Text(
+            "✅ Job Completed",
+            style: TextStyle(color: Colors.green),
+          ),
+      ],
     );
   }
 
@@ -111,6 +113,56 @@ class _ActiveJobScreenState extends State<ActiveJobScreen> {
         ),
         Text(widget.technician.service),
       ],
+    );
+  }
+
+
+  void _showCompletionDialog(BuildContext parentContext) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Job Completed"),
+          content: const Text(
+              "Has the technician completed the job to your satisfaction?"
+          ),
+          actions: [
+            TextButton(
+            onPressed: () async {
+
+
+                await FirebaseFirestore.instance
+                    .collection('requests')
+                    .doc(widget.requestId)
+                    .update({
+                  "status": "completed",
+                  "isActive": false,
+                });
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RatingReviewScreen(
+                      requestId: widget.requestId,
+                      technician: widget.technician,
+                    ),
+                  ),
+                );
+              },
+              child: const Text("Yes"),
+            ),
+
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+
+              },
+              child: const Text("Report"),
+            ),
+          ],
+        );
+      },
     );
   }
 }
