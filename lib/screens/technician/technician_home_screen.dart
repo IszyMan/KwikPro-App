@@ -7,7 +7,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kwikpro/screens/technician/edit_technician_profile_screen.dart';
 import 'package:kwikpro/screens/technician/technician_job_history_screen.dart';
 import 'package:kwikpro/screens/technician/technician_notification_screen.dart';
+import 'package:kwikpro/screens/technician/technician_profile_screen.dart';
 import 'package:kwikpro/screens/user/privacy_policy.dart';
+import '../../services/notification_service.dart';
 import '../onboarding/welcome_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -40,22 +42,14 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
   void initState() {
     super.initState();
     _fetchTechnicianData();
-    saveFcmToken();
-    _setupNotifications();
-  }
+    NotificationService.saveFcmToken(collection: 'technicians');
 
-  void _setupNotifications() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      final title = message.notification?.title ?? '';
-      final body = message.notification?.body ?? '';
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("$title\n$body")),
-      );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.setupForegroundNotifications(context);
     });
   }
+
+
 
   Future<void> _fetchTechnicianData() async {
     if (user == null) return;
@@ -72,23 +66,7 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
   }
 
 
-  Future<void> saveFcmToken() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
 
-    final token = await FirebaseMessaging.instance.getToken();
-
-    if (token != null) {
-      await FirebaseFirestore.instance
-          .collection('technicians')
-          .doc(user.uid)
-          .update({
-        'fcmToken': token,
-      });
-
-      debugPrint("FCM Token saved: $token");
-    }
-  }
 
 
   Future<void> _showDeleteAccountDialog() async {
@@ -313,11 +291,50 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
     }
   }
 
-  void _updateStatus(String requestId, String status) async {
+  Future<void> _updateStatus(
+      String requestId,
+      String status,
+      ) async {
+
     await FirebaseFirestore.instance
         .collection('requests')
         .doc(requestId)
-        .update({"status": status});
+        .update({
+      "status": status,
+    });
+
+    final requestDoc =
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .doc(requestId)
+        .get();
+
+    final data = requestDoc.data();
+
+    if (data == null) return;
+
+    final userId = data['userId'];
+
+    if (status == "accepted") {
+      await NotificationService.send(
+        recipientId: userId,
+        title: "Job Accepted",
+        body: "Technician accepted your request",
+        requestId: requestId,
+        type: "job_accepted",
+      );
+    }
+
+    if (status == "rejected") {
+      await NotificationService.send(
+        recipientId: userId,
+        title: "Job Rejected",
+        body: "Technician declined your request",
+        requestId: requestId,
+        type: "job_rejected",
+      );
+    }
+
     requestTimers[requestId]?.cancel();
   }
 
@@ -394,14 +411,53 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => TechnicianNotificationScreen(),
-                ),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('notifications')
+                .where(
+              'recipientId',
+              isEqualTo: FirebaseAuth.instance.currentUser!.uid,
+            )
+                .where('read', isEqualTo: false)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final count = snapshot.data?.docs.length ?? 0;
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none, size: 35,),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                          const TechnicianNotificationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  if (count > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          count.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
           ),
@@ -750,9 +806,16 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
 
             SizedBox(height: 12),
             ListTile(
-              leading: Icon(Icons.person),
-              title: Text("My Profile"),
-              onTap: () {},
+              leading: const Icon(Icons.person),
+              title: const Text("My Profile"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TechnicianProfileScreen(),
+                  ),
+                );
+              },
             ),
 
             ListTile(

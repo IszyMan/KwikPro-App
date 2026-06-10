@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kwikpro/screens/technician/technician_dashboard.dart';
 import 'package:kwikpro/screens/technician/technician_home_screen.dart';
+import 'package:kwikpro/screens/technician/technician_profile_screen.dart';
 
 
 class TechnicianMainScreen extends StatefulWidget {
@@ -17,7 +18,7 @@ class _TechnicianMainScreenState extends State<TechnicianMainScreen> {
   final List<Widget> _screens = [
     TechnicianHomeScreen(),
     TechnicianDashboard(),
-    Text("Profile")
+    TechnicianProfileScreen(),
 
   ];
   void _onItemTapped(int index) {

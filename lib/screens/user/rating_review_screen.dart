@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:kwikpro/models/technician_model.dart';
 import 'package:kwikpro/screens/user/review_success_screen.dart';
 
+import '../../services/notification_service.dart';
+
 class RatingReviewScreen extends StatefulWidget {
   final TechnicianModel technician;
   final String requestId;
@@ -128,11 +130,21 @@ class _RatingReviewScreenState extends State<RatingReviewScreen> {
         "timeline.completedAt": FieldValue.serverTimestamp(),
       });
 
+
+      await NotificationService.send(
+        recipientId: widget.technician.uid,
+        title: "New Review",
+        body: "You received a ${overall.toStringAsFixed(1)}★ review",
+        requestId: widget.requestId,
+        type: "review",
+      );
+
       // 3. Notify technician
       await FirebaseFirestore.instance.collection("notifications").add({
-        "userId": widget.technician.uid,
+        "recipientId": widget.technician.uid,
+        "type": "job_completed",
         "title": "Job Completed",
-        "body": "User confirmed job completion",
+        "body": "Customer confirmed job completion",
         "requestId": widget.requestId,
         "read": false,
         "createdAt": FieldValue.serverTimestamp(),

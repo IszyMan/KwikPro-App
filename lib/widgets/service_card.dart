@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../screens/user/service_job_request_screen.dart';
 import '../screens/user/service_technician_screen.dart';
 
 class ServiceCard extends StatelessWidget {
@@ -11,15 +12,16 @@ class ServiceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                ServiceTechniciansScreen(service: service),
-          ),
-        );
-      },
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ServiceJobRequestScreen(
+                service: service,
+              ),
+            ),
+          );
+        },
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/notification_service.dart';
 import 'completed_jobs_screen.dart';
 
 class TechnicianJobsScreen extends StatelessWidget {
@@ -609,6 +610,9 @@ class TechnicianJobsScreen extends StatelessWidget {
   // ================= UPDATE + NOTIFICATIONS =================
 
   Future<void> _update(String id, String status, Map data) async {
+    final userId = data['userId'];
+    final service = data['service'] ?? "service";
+
     await FirebaseFirestore.instance
         .collection('requests')
         .doc(id)
@@ -621,7 +625,69 @@ class TechnicianJobsScreen extends StatelessWidget {
       }
     });
 
+    // =========================
+    // NOTIFICATIONS TRIGGERS
+    // =========================
 
-    // TODO: call notification service here
+    switch (status) {
+      case "accepted":
+        await NotificationService.jobAccepted(
+          userId: userId,
+          requestId: id,
+        );
+        break;
+
+      case "rejected":
+        await NotificationService.jobRejected(
+          userId: userId,
+          requestId: id,
+        );
+        break;
+
+      case "onTheWay":
+        await NotificationService.technicianOnTheWay(
+          userId: userId,
+          service: service,
+          requestId: id,
+        );
+        break;
+
+      case "arrived":
+        await NotificationService.send(
+          recipientId: userId,
+          title: "Technician Arrived",
+          body: "Your technician has arrived at your location",
+          requestId: id,
+          type: "arrived",
+        );
+        break;
+
+      case "inProgress":
+        await NotificationService.jobStarted(
+          userId: userId,
+          service: service,
+          requestId: id,
+        );
+        break;
+
+      case "completionRequested":
+        await NotificationService.send(
+          recipientId: userId,
+          title: "Completion Requested",
+          body: "Technician marked job as completed. Please confirm.",
+          requestId: id,
+          type: "completion_requested",
+        );
+        break;
+
+      case "completed":
+        await NotificationService.jobCompleted(
+          userId: userId,
+          service: service,
+          requestId: id,
+        );
+        break;
+
+    }
   }
 }

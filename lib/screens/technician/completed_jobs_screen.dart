@@ -10,9 +10,9 @@ class CompletedJobsScreen extends StatefulWidget {
   State<CompletedJobsScreen> createState() => _CompletedJobsScreenState();
 }
 
-class _CompletedJobsScreenState extends State<CompletedJobsScreen>
-    with SingleTickerProviderStateMixin {
+class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
   final String technicianId = FirebaseAuth.instance.currentUser!.uid;
+
   late Future<void> _loadFuture;
 
   List<Map<String, dynamic>> completedJobsWithReviews = [];
@@ -21,6 +21,8 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen>
   double avgPrice = 0;
   double avgService = 0;
   double avgOverall = 0;
+
+  Map<String, dynamic>? technicianData;
 
   @override
   void initState() {
@@ -33,22 +35,17 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen>
     try {
       completedJobsWithReviews.clear();
 
-      // ---------------- COMPLETED JOBS ----------------
-      final completedSnap = await FirebaseFirestore.instance
-          .collection('requests')
-          .where('technicianId', isEqualTo: technicianId)
-          .where('status', isEqualTo: 'completed')
+      // ================= TECHNICIAN DATA (SOURCE OF TRUTH) =================
+      final techDoc = await FirebaseFirestore.instance
+          .collection('technicians')
+          .doc(technicianId)
           .get();
 
-      completedSnap.docs.sort((a, b) {
-        final aTime = a['timeline']?['completedAt'] ?? 0;
-        final bTime = b['timeline']?['completedAt'] ?? 0;
-        return (bTime as Timestamp).compareTo(aTime as Timestamp);
-      });
+      technicianData = techDoc.data();
 
-      totalCompleted = completedSnap.docs.length;
+      totalCompleted = technicianData?['completedJobs'] ?? 0;
 
-      // ---------------- REVIEWS ----------------
+      // ================= REVIEWS =================
       final reviewsSnap = await FirebaseFirestore.instance
           .collection('reviews')
           .where('technicianId', isEqualTo: technicianId)
@@ -60,10 +57,8 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen>
       double totalService = 0;
       double totalOverall = 0;
 
-      debugPrint("DOC COUNT: ${completedSnap.docs.length}");
-
       for (var doc in reviewsSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
 
         final requestId = data['requestId'];
 
@@ -71,9 +66,9 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen>
           reviewMap[requestId] = data;
         }
 
-        totalPrice += ((data['priceRating'] ?? 0) as num).toDouble();
-        totalService += ((data['serviceRating'] ?? 0) as num).toDouble();
-        totalOverall += ((data['rating'] ?? 0) as num).toDouble();
+        totalPrice += (data['priceRating'] ?? 0).toDouble();
+        totalService += (data['serviceRating'] ?? 0).toDouble();
+        totalOverall += (data['rating'] ?? 0).toDouble();
       }
 
       final reviewCount = reviewsSnap.docs.length;
@@ -82,18 +77,32 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen>
       avgService = reviewCount > 0 ? totalService / reviewCount : 0;
       avgOverall = reviewCount > 0 ? totalOverall / reviewCount : 0;
 
-      // ---------------- MERGE (FIXED) ----------------
-      completedJobsWithReviews = completedSnap.docs.map((jobDoc) {
-        final job = jobDoc.data() as Map<String, dynamic>;
-        final jobId = jobDoc.id;
+      // ================= COMPLETED JOBS LIST (OPTIONAL BUT SAFE) =================
+      // Still needed for UI list
+      final completedSnap = await FirebaseFirestore.instance
+          .collection('requests')
+          .where('technicianId', isEqualTo: technicianId)
+          .where('status', isEqualTo: 'completed')
+          .get();
 
-        final review = reviewMap[jobId] ?? {};
+      completedJobsWithReviews = completedSnap.docs.map((jobDoc) {
+        final job = jobDoc.data();
+        final jobId = jobDoc.id;
 
         return {
           "job": job,
-          "review": review,
+          "review": reviewMap[jobId] ?? {},
         };
       }).toList();
+
+      completedJobsWithReviews.sort((a, b) {
+        final aTime = a['job']['timeline']?['completedAt'];
+        final bTime = b['job']['timeline']?['completedAt'];
+
+        if (aTime == null || bTime == null) return 0;
+
+        return (bTime as Timestamp).compareTo(aTime as Timestamp);
+      });
 
       if (mounted) setState(() {});
     } catch (e, stack) {
@@ -116,7 +125,10 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen>
       appBar: AppBar(
         title: const Text("Completed Jobs"),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refresh,
+          ),
         ],
       ),
       body: FutureBuilder(
@@ -132,107 +144,102 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen>
     );
   }
 
+  // ================= SINGLE SCROLL UI =================
   Widget _buildUI() {
-    return Column(
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Total Completed Jobs: $totalCompleted",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
-              ),
-              Text("Your customers ratings"),
-              Text("Avg Price: ${avgPrice.toStringAsFixed(1)}"),
-              Text("Avg Service: ${avgService.toStringAsFixed(1)}"),
-              Text("Avg Overall: ${avgOverall.toStringAsFixed(1)}"),
-            ],
+        // ================= SUMMARY =================
+        Text(
+          "Total Completed Jobs: $totalCompleted",
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.green,
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
+        const Text("Your customers ratings"),
 
-        Expanded(
-          child: _completedJobsTab(),
+        Text("Avg Price: ${avgPrice.toStringAsFixed(1)}"),
+        Text("Avg Service: ${avgService.toStringAsFixed(1)}"),
+        Text("Avg Overall: ${avgOverall.toStringAsFixed(1)}"),
+
+        const SizedBox(height: 20),
+
+        const Text(
+          "Completed Jobs",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
 
+        const SizedBox(height: 10),
 
+        if (completedJobsWithReviews.isEmpty)
+          const Center(child: Text("No completed jobs yet"))
+        else
+          ...completedJobsWithReviews.map(_buildJobCard),
       ],
     );
   }
 
-  // ================= COMPLETED JOBS TAB =================
-  Widget _completedJobsTab() {
-    if (completedJobsWithReviews.isEmpty) {
-      return const Center(child: Text("No completed jobs yet"));
-    }
+  // ================= JOB CARD =================
+  Widget _buildJobCard(Map<String, dynamic> item) {
+    final job = item['job'] ?? {};
+    final review = item['review'] ?? {};
 
-    return SingleChildScrollView(
+    final completedAt =
+    (job['timeline']?['completedAt'] as Timestamp?)?.toDate();
+
+    final location = job['serviceLocationAddress'] ??
+        job['jobLocation']?['address'] ??
+        "No location";
+
+    final priceRating = ((review['priceRating'] ?? 0) as num).toDouble();
+    final serviceRating = ((review['serviceRating'] ?? 0) as num).toDouble();
+    final overall = ((review['rating'] ?? 0) as num).toDouble();
+    final comment = review['review'] ?? "";
+
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 12),
       child: Column(
-        children: completedJobsWithReviews.map((item) {
-          final job = item['job'] ?? {};
-          final review = item['review'] ?? {};
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "${job['service'] ?? 'Service'} Services rendered",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(location, style: const TextStyle(color: Colors.grey)),
 
-          final completedAt =
-          (job['timeline']?['completedAt'] as Timestamp?)?.toDate();
+          if ((job['description'] ?? "").toString().isNotEmpty)
+            Text("📝 ${job['description']}"),
 
-          final location = job['serviceLocationAddress'] ??
-              job['jobLocation']?['address'] ??
-              "No location";
+          const SizedBox(height: 8),
 
-          final priceRating =
-          ((review['priceRating'] ?? 0) as num).toDouble();
-          final serviceRating =
-          ((review['serviceRating'] ?? 0) as num).toDouble();
-          final overall =
-          ((review['rating'] ?? 0) as num).toDouble();
-          final comment = review['review'] ?? "";
-
-          return AppCard(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("${job['service']} Services rendered" ?? "Service"),
-                const SizedBox(height: 6),
-                Text(location, style: const TextStyle(color: Colors.grey)),
-
-                if ((job['description'] ?? "").toString().isNotEmpty)
-                  Text("📝 ${job['description']}"),
-
-                const SizedBox(height: 8),
-
-                if (completedAt != null)
-                  Text(
-                    "📅 Completed: ${completedAt.day}/${completedAt.month}/${completedAt.year}",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-
-                const Divider(),
-
-                if (review.isNotEmpty) ...[
-                  Text("💬 $comment"),
-                  Text("💰 Price rating: $priceRating"),
-                  Text("🛠 Service rating: $serviceRating"),
-                  Text("⭐ Your Overall rating: $overall"),
-
-                ] else
-                  const Text(
-                    "No review yet",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-              ],
+          if (completedAt != null)
+            Text(
+              "📅 Completed: ${completedAt.day}/${completedAt.month}/${completedAt.year}",
+              style: const TextStyle(color: Colors.grey),
             ),
-          );
-        }).toList(),
+
+          const Divider(),
+
+          if (review.isNotEmpty) ...[
+            Text("💬 $comment"),
+            Text("💰 Price rating: $priceRating"),
+            Text("🛠 Service rating: $serviceRating"),
+            Text("⭐ Overall rating: $overall"),
+          ] else
+            const Text(
+              "No review yet",
+              style: TextStyle(color: Colors.grey),
+            ),
+        ],
       ),
     );
   }
-
 }

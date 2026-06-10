@@ -2,6 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:kwikpro/screens/user/view_technician_profile_screen.dart';
+
+import '../../widgets/technician_card.dart';
+import '../../models/technician_model.dart';
 
 class UserJobHistoryScreen extends StatefulWidget {
   const UserJobHistoryScreen({super.key});
@@ -13,41 +17,63 @@ class UserJobHistoryScreen extends StatefulWidget {
 
 class _UserJobHistoryScreenState
     extends State<UserJobHistoryScreen> {
-
   final user = FirebaseAuth.instance.currentUser;
+
+  final activeStatuses = const [
+    "pending",
+    "accepted",
+    "appointmentAccepted",
+    "onTheWay",
+    "arrived",
+    "inProgress",
+    "completionRequested",
+  ];
 
   String formatDate(Timestamp? timestamp) {
     if (timestamp == null) return '';
-
-    return DateFormat(
-      'dd MMM yyyy, hh:mm a',
-    ).format(timestamp.toDate());
+    return DateFormat('dd MMM yyyy, hh:mm a')
+        .format(timestamp.toDate());
   }
 
   Color getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'completed':
         return Colors.green;
-
       case 'cancelled':
         return Colors.red;
-
       case 'pending':
         return Colors.orange;
-
       default:
         return Colors.grey;
     }
   }
 
-  /// ONLY COMPLETED JOBS
   Stream<QuerySnapshot> getJobStream() {
     return FirebaseFirestore.instance
         .collection('requests')
         .where('userId', isEqualTo: user!.uid)
-        .where('status', isEqualTo: 'completed')
         .orderBy('createdAt', descending: true)
         .snapshots();
+  }
+
+  /// ✅ FIXED ACTIVE JOB STREAM (NO isActive)
+  Stream<QuerySnapshot> getActiveJobStream() {
+    return FirebaseFirestore.instance
+        .collection('requests')
+        .where('userId', isEqualTo: user!.uid)
+        .where('status', whereIn: activeStatuses)
+        .limit(1)
+        .snapshots();
+  }
+
+  Future<TechnicianModel?> _getTechnician(String id) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('technicians')
+        .doc(id)
+        .get();
+
+    if (!doc.exists) return null;
+    return TechnicianModel.fromMap(doc.data()!);
   }
 
   Future<void> _refresh() async {
@@ -55,20 +81,6 @@ class _UserJobHistoryScreenState
   }
 
   void bookAgain(Map<String, dynamic> data) {
-
-    /// YOU CAN NAVIGATE TO BOOKING SCREEN HERE
-    /// Example:
-    ///
-    /// Navigator.push(
-    ///   context,
-    ///   MaterialPageRoute(
-    ///     builder: (_) => RequestServiceScreen(
-    ///       service: data['service'],
-    ///       technicianId: data['technicianId'],
-    ///     ),
-    ///   ),
-    /// );
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -80,12 +92,9 @@ class _UserJobHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
-
     if (user == null) {
       return const Scaffold(
-        body: Center(
-          child: Text("No user found"),
-        ),
+        body: Center(child: Text("No user found")),
       );
     }
 
@@ -102,359 +111,192 @@ class _UserJobHistoryScreenState
 
       body: RefreshIndicator(
         onRefresh: _refresh,
-
         child: StreamBuilder<QuerySnapshot>(
           stream: getJobStream(),
-
           builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-            /// ERROR
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  "Error: ${snapshot.error}",
+            final jobs = snapshot.data!.docs;
+
+            final completedJobs = jobs.where((d) {
+              final data = d.data() as Map<String, dynamic>;
+              return data['status'] == 'completed';
+            }).toList();
+
+            return ListView(
+              padding: const EdgeInsets.only(top: 8, bottom: 12),
+              children: [
+
+                /// ================= ACTIVE JOB (FIXED) =================
+                StreamBuilder<QuerySnapshot>(
+                  stream: getActiveJobStream(),
+                  builder: (context, activeSnap) {
+                    if (!activeSnap.hasData ||
+                        activeSnap.data!.docs.isEmpty) {
+                      return const SizedBox();
+                    }
+
+                    final doc = activeSnap.data!.docs.first;
+                    final data =
+                    doc.data() as Map<String, dynamic>;
+
+                    final techId = data['technicianId'];
+
+                    if (techId == null) return const SizedBox();
+
+                    return FutureBuilder<TechnicianModel?>(
+                      future: _getTechnician(techId),
+                      builder: (context, techSnap) {
+                        if (!techSnap.hasData) {
+                          return const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Text(
+                                "Active Job",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+
+                            TechnicianCard(
+                              technician: techSnap.data!,
+                              userLat: data['userLat'],
+                              userLng: data['userLng'],
+                              serviceLocationAddress:
+                              data['serviceLocationAddress'] ?? "",
+                              issueDescription:
+                              data['description'] ?? "",
+                              imageUrl: data['imageUrl'] ?? "",
+                              selectedSkills: const [],
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
                 ),
-              );
-            }
 
-            /// LOADING
-            if (snapshot.connectionState ==
-                ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-
-            final jobs = snapshot.data?.docs ?? [];
-
-            /// EMPTY
-            if (jobs.isEmpty) {
-              return const Center(
-                child: Text(
-                  "No completed jobs yet",
+                /// ================= COMPLETED HEADER =================
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    "Completed Jobs",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              );
-            }
 
-            return ListView.builder(
-              padding: const EdgeInsets.only(
-                top: 8,
-                bottom: 12,
-              ),
+                /// ================= COMPLETED JOBS =================
+                ...completedJobs.map((doc) {
+                  final data =
+                  doc.data() as Map<String, dynamic>;
 
-              itemCount: jobs.length,
-
-              itemBuilder: (context, index) {
-
-                final data = jobs[index].data()
-                as Map<String, dynamic>;
-
-                final status =
-                    data['status'] ?? 'completed';
-
-                final technicianName =
-                    data['technicianName'] ??
-                        'Technician';
-
-                final technicianImage =
-                    data['technicianImage'] ?? '';
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                    BorderRadius.circular(16),
-
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(
-                          0.05,
-                        ),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-
-                  child: Padding(
+                  return Container(
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
                     padding: const EdgeInsets.all(14),
-
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
                     child: Column(
                       crossAxisAlignment:
                       CrossAxisAlignment.start,
-
                       children: [
-
-                        /// TOP ROW
-                        Row(
-                          crossAxisAlignment:
-                          CrossAxisAlignment.start,
-
-                          children: [
-
-                            /// TECH IMAGE
-                            CircleAvatar(
-                              radius: 28,
-                              backgroundColor:
-                              Colors.grey.shade200,
-
-                              backgroundImage:
-                              technicianImage
-                                  .toString()
-                                  .isNotEmpty
-                                  ? NetworkImage(
-                                technicianImage,
-                              )
-                                  : null,
-
-                              child:
-                              technicianImage
-                                  .toString()
-                                  .isEmpty
-                                  ? const Icon(
-                                Icons.person,
-                                size: 28,
-                              )
-                                  : null,
-                            ),
-
-                            const SizedBox(width: 12),
-
-                            /// DETAILS
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                CrossAxisAlignment
-                                    .start,
-
-                                children: [
-
-                                  /// SERVICE
-                                  Text(
-                                    "${data['service'] ?? 'Service'} Job",
-
-                                    maxLines: 1,
-                                    overflow:
-                                    TextOverflow
-                                        .ellipsis,
-
-                                    style:
-                                    const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight:
-                                      FontWeight
-                                          .bold,
-                                    ),
-                                  ),
-
-                                  const SizedBox(
-                                    height: 4,
-                                  ),
-
-                                  /// TECH NAME
-                                  Text(
-                                    technicianName,
-
-                                    maxLines: 1,
-                                    overflow:
-                                    TextOverflow
-                                        .ellipsis,
-
-                                    style:
-                                    TextStyle(
-                                      fontSize: 14,
-                                      color: Colors
-                                          .grey
-                                          .shade700,
-                                      fontWeight:
-                                      FontWeight
-                                          .w500,
-                                    ),
-                                  ),
-
-                                  const SizedBox(
-                                    height: 6,
-                                  ),
-
-                                  /// STATUS
-                                  Container(
-                                    padding:
-                                    const EdgeInsets.symmetric(
-                                      horizontal:
-                                      10,
-                                      vertical:
-                                      4,
-                                    ),
-
-                                    decoration:
-                                    BoxDecoration(
-                                      color:
-                                      getStatusColor(
-                                        status,
-                                      ).withOpacity(
-                                        0.12,
-                                      ),
-
-                                      borderRadius:
-                                      BorderRadius.circular(
-                                        20,
-                                      ),
-                                    ),
-
-                                    child: Text(
-                                      status
-                                          .toUpperCase(),
-
-                                      style:
-                                      TextStyle(
-                                        color:
-                                        getStatusColor(
-                                          status,
-                                        ),
-                                        fontSize:
-                                        12,
-                                        fontWeight:
-                                        FontWeight
-                                            .bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        /// SERVICE
+                        Text(
+                          "${data['service']} Job",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold),
                         ),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
 
                         /// DESCRIPTION
-                        if (data['description'] != null &&
-                            data['description']
-                                .toString()
-                                .isNotEmpty)
-                          Text(
-                            data['description'],
+                        Text(data['description'] ?? ""),
 
-                            maxLines: 2,
-                            overflow:
-                            TextOverflow.ellipsis,
+                        const SizedBox(height: 6),
 
-                            style: TextStyle(
-                              color:
-                              Colors.grey.shade700,
-                            ),
-                          ),
+                        /// LOCATION
+                        Text(
+                          data['serviceLocationAddress'] ?? "",
+                          style:
+                          const TextStyle(color: Colors.grey),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        /// DATE
+                        Text(
+                          formatDate(data['createdAt']),
+                          style:
+                          const TextStyle(color: Colors.grey),
+                        ),
 
                         const SizedBox(height: 10),
 
-                        /// LOCATION
-                        Row(
-                          children: [
-
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 18,
-                              color:
-                              Colors.grey.shade700,
-                            ),
-
-                            const SizedBox(width: 4),
-
-                            Expanded(
-                              child: Text(
-                                data['serviceLocationAddress']
-                                    ??
-                                    'No location',
-
-                                maxLines: 1,
-                                overflow:
-                                TextOverflow
-                                    .ellipsis,
-
-                                style: TextStyle(
-                                  color: Colors
-                                      .grey
-                                      .shade700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        /// DATE
-                        Row(
-                          children: [
-
-                            Icon(
-                              Icons.access_time,
-                              size: 18,
-                              color:
-                              Colors.grey.shade700,
-                            ),
-
-                            const SizedBox(width: 4),
-
-                            Text(
-                              formatDate(
-                                data['createdAt'],
-                              ),
-
-                              style: TextStyle(
-                                color: Colors
-                                    .grey
-                                    .shade700,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        /// BOOK AGAIN BUTTON
+                        /// BOOK AGAIN
                         SizedBox(
                           width: double.infinity,
-
-                          height: 45,
-
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              bookAgain(data);
-                            },
+                            onPressed: () async {
+                              final techId = data['technicianId'];
 
-                            icon: const Icon(
-                              Icons.refresh,
-                              size: 20,
-                            ),
+                              final tech = await _getTechnician(techId);
 
-                            label: const Text(
-                              "Book Again",
-                            ),
+                              if (tech == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Technician not found")),
+                                );
+                                return;
+                              }
 
-                            style:
-                            ElevatedButton.styleFrom(
-                              shape:
-                              RoundedRectangleBorder(
-                                borderRadius:
-                                BorderRadius.circular(
-                                  12,
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ViewTechnicianProfileScreen(
+                                    technician: tech,
+                                    userLat: data['userLat'],
+                                    userLng: data['userLng'],
+                                    serviceLocationAddress:
+                                    data['serviceLocationAddress'] ?? "",
+                                    issueDescription: data['description'] ?? "",
+                                    imageUrl: data['imageUrl'] ?? "",
+                                    selectedSkills: const [],
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text("Book Again"),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                );
-              },
+                  );
+                }),
+              ],
             );
           },
         ),

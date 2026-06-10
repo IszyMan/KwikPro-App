@@ -8,6 +8,7 @@ import 'package:kwikpro/screens/user/active_job_screen.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:intl/intl.dart';
 import '../screens/user/view_technician_profile_screen.dart';
+import '../services/notification_service.dart';
 
 class TechnicianCard extends StatefulWidget {
   final TechnicianModel technician;
@@ -657,6 +658,14 @@ class _TechnicianCardState extends State<TechnicianCard> {
       "createdAt": FieldValue.serverTimestamp(),
     });
 
+    await NotificationService.send(
+      recipientId: widget.technician.uid,
+      title: "New Job Request",
+      body: "A customer requested your service",
+      requestId: docRef.id,
+      type: "job_request",
+    );
+
     if (mounted) {
       setState(() {});
     }
@@ -752,7 +761,10 @@ class _TechnicianCardState extends State<TechnicianCard> {
       return;
     }
 
-    await FirebaseFirestore.instance.collection('requests').add({
+    final appointmentRef =
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .add({
       "userId": user.uid,
       "technicianId": widget.technician.uid,
 
@@ -788,6 +800,17 @@ class _TechnicianCardState extends State<TechnicianCard> {
       "createdAt": FieldValue.serverTimestamp(),
     });
 
+    await NotificationService.send(
+      recipientId: widget.technician.uid,
+      title: "New Appointment",
+      body:
+      "Appointment booked for ${DateFormat.yMMMd().add_jm().format(appointmentDate)}",
+      requestId: appointmentRef.id,
+      type: "appointment",
+    );
+
+
+
     if (mounted) setState(() {});
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -809,6 +832,14 @@ class _TechnicianCardState extends State<TechnicianCard> {
       "status": "cancelled",
       "isActive": false,
     });
+
+    await NotificationService.send(
+      recipientId: widget.technician.uid,
+      title: "Job Cancelled",
+      body: "Customer cancelled the request",
+      requestId: requestId,
+      type: "job_cancelled",
+    );
 
     if (mounted) {
       setState(() {

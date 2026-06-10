@@ -7,6 +7,8 @@ import 'package:kwikpro/providers/auth_provider.dart';
 import 'package:kwikpro/screens/onboarding/welcome_screen.dart';
 import 'package:kwikpro/screens/user/privacy_policy.dart';
 import 'package:kwikpro/screens/user/terms_and_conditions.dart';
+import 'package:kwikpro/screens/user/user_notification_screen.dart';
+import '../../services/notification_service.dart';
 import '../../widgets/service_card.dart';
 import 'package:flutter/services.dart';
 import 'package:kwikpro/screens/user/edit_user_profile_screen.dart';
@@ -50,6 +52,8 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   void initState() {
     super.initState();
     _loadUser();
+    NotificationService.saveFcmToken(collection: 'users');
+    NotificationService.setupForegroundNotifications(context);
   }
 
 
@@ -488,7 +492,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
     print("Lat: $lat");
     print("Lng: $lng");
 
-    // ✅ FIRST SET BASIC USER DATA
+    //  FIRST SET BASIC USER DATA
     setState(() {
       name = data?['name'] ?? 'User';
       profilePic = data?['profilePic'] ?? '';
@@ -561,7 +565,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
                     GestureDetector(
                       onTap: _openLocationPicker,
                       child: Text(
-                        "Change",
+                        "Edit",
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.blue,
@@ -576,6 +580,57 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
             ],
           ),
         actions: [
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('notifications')
+                .where(
+              'recipientId',
+              isEqualTo: FirebaseAuth.instance.currentUser!.uid,
+            )
+                .where('read', isEqualTo: false)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final count = snapshot.data?.docs.length ?? 0;
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none, size: 35,),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                          const UserNotificationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  if (count > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          count.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          SizedBox(width: 4,),
           GestureDetector(
             onTap: () => _scaffoldKey.currentState?.openEndDrawer(),
             child: Padding(

@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:kwikpro/screens/user/request_technician_screen.dart';
 import '../../models/technician_model.dart';
+import '../../widgets/technician_card.dart';
 
 class ViewTechnicianProfileScreen extends StatefulWidget {
   final TechnicianModel technician;
@@ -382,7 +384,20 @@ class _ViewTechnicianProfileScreenState
                   child: ElevatedButton(
                     onPressed: () {
 
-                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RequestTechnicianScreen(
+                            technician: widget.technician,
+                            userLat: widget.userLat,
+                            userLng: widget.userLng,
+                            serviceLocationAddress: widget.serviceLocationAddress,
+                            issueDescription: widget.issueDescription,
+                            imageUrl: widget.imageUrl,
+                            selectedSkills: widget.selectedSkills,
+                          ),
+                        ),
+                      );
 
                     },
 
