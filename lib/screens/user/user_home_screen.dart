@@ -554,7 +554,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
                 child: Row(
                   children: [
                     Icon(Icons.location_on, size: 14, color: Colors.grey),
-                    SizedBox(width: 4),
+                    SizedBox(width: 2),
                     Text(
                       location,
                       style: TextStyle(fontSize: 12, color: Colors.grey),

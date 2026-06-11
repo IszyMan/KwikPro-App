@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/notification_service.dart';
+import '../chat/chat_screens.dart';
+import '../chat/chat_service.dart';
 import 'completed_jobs_screen.dart';
 
 class TechnicianJobsScreen extends StatelessWidget {
@@ -92,6 +94,7 @@ class TechnicianJobsScreen extends StatelessWidget {
               "Incoming Requests",
               incomingInstant,
               context,
+              techId: techId,
               emptyMessage: "No incoming requests",
             ),
 
@@ -99,11 +102,12 @@ class TechnicianJobsScreen extends StatelessWidget {
               "Incoming Appointments",
               incomingAppointments,
               context,
+              techId: techId,
               emptyMessage: "No incoming appointments",
             ),
 
             if (active.isNotEmpty)
-              _section("Active Jobs", active, context),
+              _section("Active Jobs", active, context, techId: techId,),
 
             _completedPreviewSection(
               completed,
@@ -120,6 +124,7 @@ class TechnicianJobsScreen extends StatelessWidget {
       List<QueryDocumentSnapshot> docs,
       BuildContext context, {
         String emptyMessage = "No data",
+        required String techId,
       }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,6 +252,101 @@ class TechnicianJobsScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 18),
+
+                  // ================= CHAT BUTTON (ACTIVE JOBS ONLY) =================
+                  if ([
+                    "accepted",
+                    "appointmentAccepted",
+                    "onTheWay",
+                    "arrived",
+                    "inProgress",
+                    "completionRequested"
+                  ].contains(status))
+                    SizedBox(
+                      width: double.infinity,
+                      child: StreamBuilder<int>(
+                        stream: ChatService.unreadCountStream(doc.id, techId),
+                        builder: (context, snapshot) {
+                          final unreadCount = snapshot.data ?? 0;
+
+                          return ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () async {
+                              // ensure chat exists before opening
+                              await FirebaseFirestore.instance
+                                  .collection('chats')
+                                  .doc(doc.id)
+                                  .set({
+                                "requestId": doc.id,
+                                "participants": [
+                                  data['userId'],
+                                  techId,
+                                ],
+                                "updatedAt": FieldValue.serverTimestamp(),
+                              }, SetOptions(merge: true));
+
+
+
+                              if (!context.mounted) return;
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatScreen(
+                                    requestId: doc.id,
+                                    otherUserName: data['userName'] ?? "Customer",
+                                    otherUserId: data['userId'],
+                                    otherUserImage: data['userImage'],
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    const Icon(Icons.chat),
+
+                                    if (unreadCount > 0)
+                                      Positioned(
+                                        right: -10,
+                                        top: -10,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Text(
+                                            unreadCount > 99 ? "99+" : "$unreadCount",
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+
+                                const SizedBox(width: 10),
+
+                                const Text("Chat with Customer"),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                  const SizedBox(height: 12),
 
                   // ACTIONS
                   if (status == "pending")
@@ -611,8 +711,10 @@ class TechnicianJobsScreen extends StatelessWidget {
 
   Future<void> _update(String id, String status, Map data) async {
     final userId = data['userId'];
+    final technicianId = data['technicianId'];
     final service = data['service'] ?? "service";
 
+    // ================= UPDATE REQUEST =================
     await FirebaseFirestore.instance
         .collection('requests')
         .doc(id)
@@ -625,10 +727,33 @@ class TechnicianJobsScreen extends StatelessWidget {
       }
     });
 
-    // =========================
-    // NOTIFICATIONS TRIGGERS
-    // =========================
+    print("===== CHAT CREATION =====");
+    print("userId: $userId");
+    print("techId: $technicianId");
 
+    // ================= CREATE CHAT ROOM (ONLY ONCE) =================
+    if (status == "accepted" && data['chatCreated'] != true) {
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(id)
+          .set({
+        "participants": [userId, technicianId],
+        "lastMessage": "",
+        "updatedAt": FieldValue.serverTimestamp(),
+        "requestId": id,
+        "chatCreated": true,
+      }, SetOptions(merge: true));
+
+      // mark chat created
+      await FirebaseFirestore.instance
+          .collection('requests')
+          .doc(id)
+          .update({
+        "chatCreated": true,
+      });
+    }
+
+    // ================= NOTIFICATIONS =================
     switch (status) {
       case "accepted":
         await NotificationService.jobAccepted(
@@ -687,7 +812,6 @@ class TechnicianJobsScreen extends StatelessWidget {
           requestId: id,
         );
         break;
-
     }
   }
 }

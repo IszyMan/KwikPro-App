@@ -143,11 +143,6 @@ class _ViewTechnicianProfileScreenState
           final avgRating =
           data['avgRating'];
 
-          //final avgPrice =
-          //data['avgPrice'];
-
-          //final avgService =
-          //data['avgService'];
 
           return Column(
             children: [
@@ -273,19 +268,6 @@ class _ViewTechnicianProfileScreenState
                             Colors.blue,
                           ),
 
-                         // _statChip(
-                          //  "Price",
-                          //  avgPrice
-                         //       .toStringAsFixed(1),
-                         //   Colors.orange,
-                         // ),
-
-                         // _statChip(
-                         //   "Service",
-                         //   avgService
-                          //      .toStringAsFixed(1),
-                          //  Colors.purple,
-                         // ),
                         ],
                       ),
 
@@ -319,8 +301,6 @@ class _ViewTechnicianProfileScreenState
 
                             Tab(text: "Technician Bio"),
 
-                            //Tab(text: "Work Tools"),
-
                             Tab(text: "Previous Work images"),
                           ],
                         ),
@@ -339,13 +319,6 @@ class _ViewTechnicianProfileScreenState
 
                             /// BIO TAB
                             _buildBio(),
-
-                            /// TOOLS TAB
-                           // _buildGallery(
-                            //  widget.technician
-                            //      .workToolsImages ??
-                           //       [],
-                          //  ),
 
                             /// WORK TAB
                             _buildGallery(

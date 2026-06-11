@@ -147,6 +147,7 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                         ),
 
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               category,
