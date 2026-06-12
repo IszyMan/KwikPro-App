@@ -289,7 +289,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
               _inputCard(
                 child: TextFormField(
                   controller: _issueController,
-                  maxLines: 3,
+                  maxLines: 2,
                   decoration: const InputDecoration(
                     hintText: "Describe your issue",
                     border: InputBorder.none,
@@ -347,34 +347,38 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
 
               const SizedBox(height: 20),
 
-              /// SEARCH BUTTON (PROMINENT)
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: _loading ? null : _searchTechnicians,
-                  child: _loading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                    "SEARCH TECHNICIANS",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: SizedBox(
+            height: 55,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: _loading ? null : _searchTechnicians,
+              child: _loading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                "SEARCH TECHNICIANS",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
+
   }
 
   Widget _card({required Widget child, Color? color}) {
@@ -393,7 +397,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),

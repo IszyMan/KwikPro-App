@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:kwikpro/screens/user/request_technician_screen.dart';
+import 'package:intl/intl.dart';
 import '../../models/technician_model.dart';
-import '../../widgets/technician_card.dart';
+import '../../services/notification_service.dart';
+import 'active_job_screen.dart';
 
 class ViewTechnicianProfileScreen extends StatefulWidget {
   final TechnicianModel technician;
@@ -33,16 +35,42 @@ class _ViewTechnicianProfileScreenState
     extends State<ViewTechnicianProfileScreen>
     with SingleTickerProviderStateMixin {
 
+  Stream<QuerySnapshot>? _requestStream;
+  String _status = "none";
+  String? _requestId;
+  String? _requestType;
+
   late TabController _tabController;
+
+  void _openActiveJob(String requestId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ActiveJobScreen(
+          technician: widget.technician,
+          requestId: requestId,
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
 
-    _tabController = TabController(
-      length: 2,
-      vsync: this,
-    );
+    _tabController = TabController(length: 2, vsync: this);
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      _requestStream = FirebaseFirestore.instance
+          .collection('requests')
+          .where('userId', isEqualTo: user.uid)
+          .where('technicianId', isEqualTo: widget.technician.uid)
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .snapshots();
+    }
   }
 
   @override
@@ -249,29 +277,76 @@ class _ViewTechnicianProfileScreenState
                       const SizedBox(height: 24),
 
                       /// STATS
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
 
-                          _statChip(
-                            "Jobs Completed",
-                            "$completedJobs",
-                            Colors.green,
+                          /// Jobs Completed
+                          _miniStat(
+                            icon: Icons.work,
+                            label: "Completed Jobs",
+                            value: "$completedJobs",
+                            color: Colors.green,
                           ),
 
-                          _statChip(
-                            "Rating",
-                            avgRating
-                                .toStringAsFixed(1),
-                            Colors.blue,
-                          ),
+                          /// Rating + Stars
+                          Row(
+                            children: [
+                              _miniStat(
+                                icon: Icons.star,
+                                label: "Rating",
+                                value: avgRating.toStringAsFixed(1),
+                                color: Colors.blue,
+                              ),
 
+                              const SizedBox(width: 6),
+
+                              Row(
+                                children: _buildStars(avgRating),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
 
+
+
                       const SizedBox(height: 24),
+
+                      /// REQUEST / STATUS SECTION
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: _requestStream,
+                          builder: (context, snapshot) {
+
+                            // DEFAULT STATE
+                            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                              _status = "none";
+                              _requestId = null;
+
+                              return _buildActionPanel();
+                            }
+
+                            final doc = snapshot.data!.docs.first;
+                            final data = doc.data() as Map<String, dynamic>;
+
+                            // UPDATE STATE FROM FIRESTORE
+                            _status = data['status'] ?? "none";
+                            _requestId = doc.id;
+                            _requestType = data['type'] ?? "instant";
+
+                            // SIDE EFFECTS (optional but important)
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                // you can later add sound/notifications here safely
+                              }
+                            });
+
+                            return _buildActionPanel();
+                          },
+                        ),
+                      ),
 
                       /// TAB BAR
                       Container(
@@ -334,59 +409,6 @@ class _ViewTechnicianProfileScreenState
                 ),
               ),
 
-              /// REQUEST BUTTON
-              Container(
-                padding: const EdgeInsets.all(16),
-
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                      Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                    )
-                  ],
-                ),
-
-                child: SizedBox(
-                  width: double.infinity,
-
-                  height: 52,
-
-                  child: ElevatedButton(
-                    onPressed: () {
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => RequestTechnicianScreen(
-                            technician: widget.technician,
-                            userLat: widget.userLat,
-                            userLng: widget.userLng,
-                            serviceLocationAddress: widget.serviceLocationAddress,
-                            issueDescription: widget.issueDescription,
-                            imageUrl: widget.imageUrl,
-                            selectedSkills: widget.selectedSkills,
-                          ),
-                        ),
-                      );
-
-                    },
-
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                        BorderRadius.circular(12),
-                      ),
-                    ),
-
-                    child: const Text(
-                      "Request Service",
-                    ),
-                  ),
-                ),
-              )
             ],
           );
         },
@@ -542,56 +564,544 @@ class _ViewTechnicianProfileScreenState
   }
 
   /// STATS CHIP
-  Widget _statChip(
-      String label,
-      String value,
-      Color color,
-      ) {
-
-    return Container(
-
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 8,
-      ),
-
-      decoration: BoxDecoration(
-
-        color: color.withOpacity(0.12),
-
-        borderRadius:
-        BorderRadius.circular(20),
-
-        border: Border.all(
-          color: color.withOpacity(0.25),
+  Widget _miniStat({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 4),
+        Text(
+          "$value $label",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
         ),
+      ],
+    );
+  }
+
+  Future<void> _sendRequest(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    final requestSessionId =
+        "${user?.uid}_${widget.technician.uid}";
+
+    if (user == null) return;
+
+
+
+    final existingAppointment =
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .where('userId', isEqualTo: user.uid)
+        .where('technicianId', isEqualTo: widget.technician.uid)
+        .where('type', isEqualTo: 'appointment')
+        .where('isActive', isEqualTo: true)
+        .get();
+
+    if (existingAppointment.docs.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You already have an active request"),
+        ),
+      );
+      return;
+    }
+
+
+    final docRef =
+    await FirebaseFirestore.instance.collection('requests').add({
+
+      "userId": user.uid,
+      "technicianId": widget.technician.uid,
+      "type": "instant",
+      "technicianName": widget.technician.name,
+      "technicianImage": widget.technician.profilePic,
+      "service": widget.technician.service,
+      "serviceLocationAddress": widget.serviceLocationAddress,
+      "description": widget.issueDescription,
+      "imageUrl": widget.imageUrl.isNotEmpty ? widget.imageUrl : null,
+      "userLat": widget.userLat,
+      "userLng": widget.userLng,
+      "sessionId": requestSessionId,
+      "isActive": true,
+      "status": "pending",
+      "createdAt": FieldValue.serverTimestamp(),
+    });
+
+    await NotificationService.send(
+      recipientId: widget.technician.uid,
+      title: "New Job Request",
+      body: "A customer requested your service",
+      requestId: docRef.id,
+      type: "job_request",
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Request sent")),
+    );
+
+    Future.delayed(const Duration(seconds: 30), () async {
+
+      if (!mounted) return;
+
+      final doc = await docRef.get();
+
+      if (!doc.exists) return;
+
+      final data = doc.data();
+
+      if (data == null) return;
+
+      if (data['isActive'] != true) return;
+
+      final currentStatus = data['status'];
+
+      if (currentStatus == "pending") {
+
+        await docRef.update({
+          "status": "expired",
+          "isActive": false,
+        });
+
+      }
+
+    });
+  }
+
+  Future<void> _bookAppointment() async {
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(
+        const Duration(days: 30),
       ),
+      initialDate: DateTime.now(),
+    );
 
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    if (pickedDate == null) return;
 
-        children: [
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
 
-          Text(
-            value,
+    if (pickedTime == null) return;
 
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+    final appointmentDate = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    final existingAppointment =
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .where('userId', isEqualTo: user.uid)
+        .where('technicianId',
+        isEqualTo: widget.technician.uid)
+        .where('type', isEqualTo: 'appointment')
+        .where('status',
+        whereIn: [
+          "scheduled",
+          "appointmentAccepted"
+        ])
+        .get();
+
+    if (existingAppointment.docs.isNotEmpty) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "You already booked an appointment",
           ),
+        ),
+      );
 
-          const SizedBox(width: 5),
+      return;
+    }
 
-          Text(
-            label,
+    final appointmentRef =
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .add({
+      "userId": user.uid,
+      "technicianId": widget.technician.uid,
 
-            style: TextStyle(
-              color: color,
-            ),
-          ),
-        ],
+      "type": "appointment",
+      "jobType": "appointment",
+
+      "technicianName": widget.technician.name,
+      "technicianImage": widget.technician.profilePic,
+
+      "service": widget.technician.service,
+      "serviceLocationAddress": widget.serviceLocationAddress,
+      "description": widget.issueDescription,
+
+      "jobLocation": {
+        "address": widget.serviceLocationAddress,
+        "lat": widget.userLat,
+        "lng": widget.userLng,
+      },
+
+      "imageUrl": widget.imageUrl.isNotEmpty
+          ? widget.imageUrl
+          : null,
+
+      "status": "scheduled",
+      "isActive": true,
+
+      "appointmentDate":
+      Timestamp.fromDate(appointmentDate),
+
+      "appointmentTime":
+      "${pickedTime.hour}:${pickedTime.minute}",
+
+      "createdAt": FieldValue.serverTimestamp(),
+    });
+
+    await NotificationService.send(
+      recipientId: widget.technician.uid,
+      title: "New Appointment",
+      body:
+      "Appointment booked for ${DateFormat.yMMMd().add_jm().format(appointmentDate)}",
+      requestId: appointmentRef.id,
+      type: "appointment",
+    );
+
+
+
+    if (mounted) setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "Appointment booked for "
+              "${DateFormat.yMMMd().add_jm().format(appointmentDate)}",
+        ),
       ),
     );
   }
+
+  Future<void> _cancelRequest(String requestId) async {
+
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .doc(requestId)
+        .update({
+      "status": "cancelled",
+      "isActive": false,
+    });
+
+    await NotificationService.send(
+      recipientId: widget.technician.uid,
+      title: "Job Cancelled",
+      body: "Customer cancelled the request",
+      requestId: requestId,
+      type: "job_cancelled",
+    );
+
+
+  }
+
+  Widget _buildActionPanel() {
+    if (_requestId == null) {
+      return _buildInitialActions();
+    }
+
+    if (_status == "pending" || _status == "scheduled") {
+      return _buildPendingActions();
+    }
+
+    if ([
+      "accepted",
+      "appointmentAccepted",
+      "onTheWay",
+      "arrived",
+      "inProgress",
+      "completionRequested"
+    ].contains(_status)) {
+      return _buildActiveJobActions();
+    }
+
+    return _buildInitialActions();
+  }
+
+
+  Widget _buildInitialActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: _actionChipButton(
+            icon: Icons.flash_on,
+            label: "Request Now",
+            color: Colors.orange,
+            onTap: () => _sendRequest(context),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: _actionChipButton(
+            icon: Icons.calendar_month,
+            label: "Book Appointment",
+            color: Colors.blue,
+            onTap: _bookAppointment,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPendingActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _statusChip(_status),
+
+        const SizedBox(height: 10),
+
+        Text(
+          _requestType == "appointment"
+              ? "Appointment awaiting technician confirmation..."
+              : "Waiting for technician response...",
+        ),
+
+        const SizedBox(height: 10),
+
+        SizedBox(
+          width: double.infinity,
+          child: _actionChipButton(
+            icon: Icons.cancel,
+            label: "Cancel Request",
+            color: Colors.red,
+            onTap: () => _cancelRequest(_requestId!),
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  Widget _buildActiveJobActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _statusChip(_status),
+
+        const SizedBox(height: 10),
+
+        SizedBox(
+          width: double.infinity,
+          child: _actionChipButton(
+
+            icon: Icons.work,
+            label: "View Job Progress",
+            color: Colors.green,
+            onTap: () => _openActiveJob(_requestId!),
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  Widget _statusChip(String status) {
+    Color color;
+    String label;
+
+    switch (status) {
+      case "pending":
+        color = Colors.orange;
+        label = "Pending";
+        break;
+
+      case "accepted":
+      case "appointmentAccepted":
+        color = Colors.blue;
+        label = "Accepted";
+        break;
+
+      case "onTheWay":
+        color = Colors.purple;
+        label = "On the way";
+        break;
+
+      case "arrived":
+        color = Colors.indigo;
+        label = "Arrived";
+        break;
+
+      case "inProgress":
+        color = Colors.teal;
+        label = "In Progress";
+        break;
+
+      case "completionRequested":
+        color = Colors.amber;
+        label = "Completion Requested";
+        break;
+
+      case "completed":
+        color = Colors.green;
+        label = "Completed";
+        break;
+
+      case "scheduled":
+        color = Colors.orange;
+        label = "Scheduled";
+        break;
+
+      case "expired":
+        color = Colors.grey;
+        label = "Expired";
+        break;
+
+      case "cancelled":
+        color = Colors.red;
+        label = "Cancelled";
+        break;
+
+      default:
+        color = Colors.grey;
+        label = "No Status";
+    }
+
+    return SizedBox(
+        width: double.infinity,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withOpacity(0.4)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(_statusIcon(status), color: color, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+    )
+    );
+  }
+
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case "pending":
+        return Icons.hourglass_bottom;
+
+      case "accepted":
+      case "appointmentAccepted":
+        return Icons.verified;
+
+      case "onTheWay":
+        return Icons.directions_car;
+
+      case "arrived":
+        return Icons.location_on;
+
+      case "inProgress":
+        return Icons.build;
+
+      case "completionRequested":
+        return Icons.task_alt;
+
+      case "completed":
+        return Icons.check_circle;
+
+      case "scheduled":
+        return Icons.event;
+
+      case "cancelled":
+        return Icons.cancel;
+
+      default:
+        return Icons.info;
+    }
+  }
+
+
+  Widget _actionChipButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = Colors.blue,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.35)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildStars(double rating) {
+    final fullStars = rating.floor();
+    final hasHalfStar = (rating - fullStars) >= 0.5;
+
+    return [
+      for (int i = 0; i < fullStars; i++)
+        const Icon(Icons.star, size: 16, color: Colors.amber),
+
+      if (hasHalfStar)
+        const Icon(Icons.star_half, size: 16, color: Colors.amber),
+    ];
+  }
+
+
+
 }

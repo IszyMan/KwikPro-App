@@ -755,27 +755,7 @@ class TechnicianJobsScreen extends StatelessWidget {
 
     // ================= NOTIFICATIONS =================
     switch (status) {
-      case "accepted":
-        await NotificationService.jobAccepted(
-          userId: userId,
-          requestId: id,
-        );
-        break;
 
-      case "rejected":
-        await NotificationService.jobRejected(
-          userId: userId,
-          requestId: id,
-        );
-        break;
-
-      case "onTheWay":
-        await NotificationService.technicianOnTheWay(
-          userId: userId,
-          service: service,
-          requestId: id,
-        );
-        break;
 
       case "arrived":
         await NotificationService.send(
@@ -787,31 +767,10 @@ class TechnicianJobsScreen extends StatelessWidget {
         );
         break;
 
-      case "inProgress":
-        await NotificationService.jobStarted(
-          userId: userId,
-          service: service,
-          requestId: id,
-        );
-        break;
 
-      case "completionRequested":
-        await NotificationService.send(
-          recipientId: userId,
-          title: "Completion Requested",
-          body: "Technician marked job as completed. Please confirm.",
-          requestId: id,
-          type: "completion_requested",
-        );
-        break;
 
-      case "completed":
-        await NotificationService.jobCompleted(
-          userId: userId,
-          service: service,
-          requestId: id,
-        );
-        break;
+
+
     }
   }
 }

@@ -522,7 +522,7 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
                                   ),
                                 ),
                                 Text(
-                                  online ? "Online" : "Offline",
+                                  online ? "Available" : "Unavailable",
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: online ? Colors.green : Colors.orange,

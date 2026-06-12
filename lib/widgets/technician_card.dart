@@ -71,40 +71,6 @@ class _TechnicianCardState extends State<TechnicianCard> {
   }
 
 
-  void startTimer() {
-    if (isCounting) return;
-
-    countdown = 30;
-    isCounting = true;
-
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (!mounted) return false;
-
-      if (countdown <= 0) {
-        setState(() {
-          isCounting = false;
-        });
-        return false;
-      }
-
-      setState(() => countdown--);
-      return isCounting;
-    });
-  }
-
-  void _openActiveJob(String requestId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ActiveJobScreen(
-          technician: widget.technician,
-          requestId: requestId,
-        ),
-      ),
-    );
-  }
 
 
 
@@ -179,11 +145,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
           builder: (context, snapshot) {
             final data = _extractRequestData(snapshot);
 
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && lastStatus != data.status) {
-                _handleSideEffects(data.status);
-              }
-            });
+
             return _buildCard(
               context,
               data,
@@ -216,23 +178,6 @@ class _TechnicianCardState extends State<TechnicianCard> {
   }
 
 
-  void _handleSideEffects(String status) {
-    if (status == "accepted" && lastStatus != "accepted") {
-      audioPlayer.play(AssetSource('notification.mp3'));
-    }
-
-    if (status == "pending" &&
-        lastStatus != "pending" &&
-        !isCounting) {
-      startTimer();
-    }
-
-    if (status == "accepted" || status == "rejected") {
-      isCounting = false;
-    }
-
-    lastStatus = status;
-  }
 
 
   Widget _buildCard(BuildContext context, _RequestData data, {required bool hasWorkedBefore}) {
@@ -254,14 +199,6 @@ class _TechnicianCardState extends State<TechnicianCard> {
                   _buildTechnicianInfo(distanceData, hasWorkedBefore: hasWorkedBefore,),
                   const SizedBox(height: 6),
 
-                  _buildStatusChip(data.status),
-                  const SizedBox(height: 8),
-
-                  _buildTopActionRow(context, data),
-                  const SizedBox(height: 10),
-
-                  if (data.requestId == null)
-                    _buildBottomActionRow(context),
                 ],
               ),
             ),
@@ -433,6 +370,31 @@ class _TechnicianCardState extends State<TechnicianCard> {
             Text(d.eta),
           ],
         ),
+
+        const SizedBox(height: 10),
+
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ViewTechnicianProfileScreen(
+                    technician: widget.technician,
+                    userLat: widget.userLat,
+                    userLng: widget.userLng,
+                    serviceLocationAddress: widget.serviceLocationAddress,
+                    issueDescription: widget.issueDescription,
+                    imageUrl: widget.imageUrl,
+                    selectedSkills: widget.selectedSkills,
+                  ),
+                ),
+              );
+            },
+            child: const Text("View Profile"),
+          ),
+        ),
       ],
     );
   }
@@ -448,404 +410,6 @@ class _TechnicianCardState extends State<TechnicianCard> {
           ? Icons.check_circle
           : Icons.block,
     );
-  }
-
-
-  Widget _buildStatusChip(String status) {
-    final pendingText =
-        "⏳ Waiting For Technician • ${countdown}s";
-    final map = {
-      "pending": (pendingText, Colors.blue),
-      "accepted": ("✅ Accepted", Colors.green),
-      "onTheWay": ("🚗 On The Way", Colors.orange),
-      "arrived": ("📍 Arrived", Colors.teal),
-      "inProgress": ("🛠️ In Progress", Colors.purple),
-      "completionRequested": ("⏳ Awaiting Confirmation", Colors.amber),
-      "completed": ("✅ Completed", Colors.green),
-      "rejected": ("❌ Declined", Colors.red),
-      "scheduled": ("📅 Appointment Pending", Colors.blue),
-      "appointmentAccepted": ("✅ Appointment Confirmed", Colors.green),
-      "appointmentRejected": ("❌ Appointment Declined", Colors.red),
-      "cancelled": ("❌ Cancelled", Colors.grey),
-      "expired": ("⌛ No Response", Colors.grey),
-    };
-
-    final item = map[status];
-    if (item == null) return const SizedBox();
-
-    return Chip(
-      key: ValueKey(status),
-      label: Text(item.$1),
-      backgroundColor: item.$2,
-    );
-  }
-
-
-  Widget _buildTopActionRow(
-      BuildContext context,
-      _RequestData data,
-      ) {
-
-    final id = data.requestId;
-    final status = data.status;
-
-    // NO REQUEST
-    if (id == null) {
-      return Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => _sendRequest(context),
-              child: const Text("Request Now"),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // PENDING
-    if (status == "pending") {
-      return Row(
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              onPressed: () => _cancelRequest(id),
-              child: const Text("Cancel"),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // ACTIVE STATUSES
-    final activeStatuses = [
-      "accepted",
-      "appointmentAccepted",
-      "onTheWay",
-      "arrived",
-      "inProgress",
-      "completionRequested",
-    ];
-
-    // CLOSED STATUSES
-    final closedStatuses = [
-      "completed",
-      "rejected",
-      "cancelled",
-      "expired",
-    ];
-
-    // ACTIVE JOB UI
-    if (activeStatuses.contains(status)) {
-      return Row(
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _openActiveJob(id),
-              child: const Text("View Job"),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // CLOSED JOB UI
-    if (closedStatuses.contains(status)) {
-      return Row(
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _sendRequest(context),
-              child: const Text("Request Again"),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // FALLBACK UI
-    return const SizedBox();
-  }
-
-  Widget _buildBottomActionRow(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: _bookAppointment,
-            child: const Text("Book Appointment"),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(child: _profileButton()),
-      ],
-    );
-  }
-
-  Widget _profileButton() {
-    return OutlinedButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ViewTechnicianProfileScreen(
-              technician: widget.technician,
-              userLat: widget.userLat,
-              userLng: widget.userLng,
-              serviceLocationAddress: widget.serviceLocationAddress,
-              issueDescription: widget.issueDescription,
-              imageUrl: widget.imageUrl,
-              selectedSkills: widget.selectedSkills,
-            ),
-          ),
-        );
-      },
-      child: const Text("Profile"),
-    );
-  }
-
-
-  Future<void> _sendRequest(BuildContext context) async {
-    final user = FirebaseAuth.instance.currentUser;
-
-    final requestSessionId =
-        "${user?.uid}_${widget.technician.uid}";
-
-    if (user == null) return;
-
-    startTimer();
-
-    final existingAppointment =
-    await FirebaseFirestore.instance
-        .collection('requests')
-        .where('userId', isEqualTo: user.uid)
-        .where('technicianId', isEqualTo: widget.technician.uid)
-        .where('type', isEqualTo: 'appointment')
-        .where('isActive', isEqualTo: true)
-        .get();
-
-    if (existingAppointment.docs.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You already have an active request"),
-        ),
-      );
-      return;
-    }
-
-
-    final docRef =
-    await FirebaseFirestore.instance.collection('requests').add({
-
-      "userId": user.uid,
-      "technicianId": widget.technician.uid,
-      "type": "instant",
-      "technicianName": widget.technician.name,
-      "technicianImage": widget.technician.profilePic,
-      "service": widget.technician.service,
-      "serviceLocationAddress": widget.serviceLocationAddress,
-      "description": widget.issueDescription,
-      "imageUrl": widget.imageUrl.isNotEmpty ? widget.imageUrl : null,
-      "userLat": widget.userLat,
-      "userLng": widget.userLng,
-      "sessionId": requestSessionId,
-      "isActive": true,
-      "status": "pending",
-      "createdAt": FieldValue.serverTimestamp(),
-    });
-
-    await NotificationService.send(
-      recipientId: widget.technician.uid,
-      title: "New Job Request",
-      body: "A customer requested your service",
-      requestId: docRef.id,
-      type: "job_request",
-    );
-
-    if (mounted) {
-      setState(() {});
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Request sent")),
-    );
-
-    Future.delayed(const Duration(seconds: 30), () async {
-
-      if (!mounted) return;
-
-      final doc = await docRef.get();
-
-      if (!doc.exists) return;
-
-      final data = doc.data();
-
-      if (data == null) return;
-
-      if (data['isActive'] != true) return;
-
-      final currentStatus = data['status'];
-
-      if (currentStatus == "pending") {
-
-        await docRef.update({
-          "status": "expired",
-          "isActive": false,
-        });
-
-      }
-
-    });
-  }
-
-  Future<void> _bookAppointment() async {
-
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) return;
-
-    final pickedDate = await showDatePicker(
-      context: context,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(
-        const Duration(days: 30),
-      ),
-      initialDate: DateTime.now(),
-    );
-
-    if (pickedDate == null) return;
-
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-
-    if (pickedTime == null) return;
-
-    final appointmentDate = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    );
-
-    final existingAppointment =
-    await FirebaseFirestore.instance
-        .collection('requests')
-        .where('userId', isEqualTo: user.uid)
-        .where('technicianId',
-        isEqualTo: widget.technician.uid)
-        .where('type', isEqualTo: 'appointment')
-        .where('status',
-        whereIn: [
-          "scheduled",
-          "appointmentAccepted"
-        ])
-        .get();
-
-    if (existingAppointment.docs.isNotEmpty) {
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "You already booked an appointment",
-          ),
-        ),
-      );
-
-      return;
-    }
-
-    final appointmentRef =
-    await FirebaseFirestore.instance
-        .collection('requests')
-        .add({
-      "userId": user.uid,
-      "technicianId": widget.technician.uid,
-
-      "type": "appointment",
-      "jobType": "appointment",
-
-      "technicianName": widget.technician.name,
-      "technicianImage": widget.technician.profilePic,
-
-      "service": widget.technician.service,
-      "serviceLocationAddress": widget.serviceLocationAddress,
-      "description": widget.issueDescription,
-
-      "jobLocation": {
-        "address": widget.serviceLocationAddress,
-        "lat": widget.userLat,
-        "lng": widget.userLng,
-      },
-
-      "imageUrl": widget.imageUrl.isNotEmpty
-          ? widget.imageUrl
-          : null,
-
-      "status": "scheduled",
-      "isActive": true,
-
-      "appointmentDate":
-      Timestamp.fromDate(appointmentDate),
-
-      "appointmentTime":
-      "${pickedTime.hour}:${pickedTime.minute}",
-
-      "createdAt": FieldValue.serverTimestamp(),
-    });
-
-    await NotificationService.send(
-      recipientId: widget.technician.uid,
-      title: "New Appointment",
-      body:
-      "Appointment booked for ${DateFormat.yMMMd().add_jm().format(appointmentDate)}",
-      requestId: appointmentRef.id,
-      type: "appointment",
-    );
-
-
-
-    if (mounted) setState(() {});
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Appointment booked for "
-              "${DateFormat.yMMMd().add_jm().format(appointmentDate)}",
-        ),
-      ),
-    );
-  }
-
-  Future<void> _cancelRequest(String requestId) async {
-
-    await FirebaseFirestore.instance
-        .collection('requests')
-        .doc(requestId)
-        .update({
-      "status": "cancelled",
-      "isActive": false,
-    });
-
-    await NotificationService.send(
-      recipientId: widget.technician.uid,
-      title: "Job Cancelled",
-      body: "Customer cancelled the request",
-      requestId: requestId,
-      type: "job_cancelled",
-    );
-
-    if (mounted) {
-      setState(() {
-        isCounting = false;
-      });
-    }
   }
 
 
