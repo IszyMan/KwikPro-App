@@ -10,6 +10,7 @@ import 'package:kwikpro/screens/technician/technician_notification_screen.dart';
 import 'package:kwikpro/screens/technician/technician_profile_screen.dart';
 import 'package:kwikpro/screens/user/privacy_policy.dart';
 import '../../services/notification_service.dart';
+import '../../widgets/showcase_feed_widget.dart';
 import '../onboarding/welcome_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -552,144 +553,19 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
             if (_technicianData != null) technicianHeader(_technicianData!),
             SizedBox(height: 10),
 
-            //f INCOMING JOB REQUESTS
-            Text('Incoming Job Requests',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
+           SizedBox(height: 20),
 
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('requests')
-                  .where('technicianId', isEqualTo: user!.uid)
-                  .where('status', isEqualTo: 'pending')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return Center(child: CircularProgressIndicator());
-                }
-
-                final requests = snapshot.data!.docs;
-
-                if (requests.isEmpty) return Text("No incoming requests");
-
-                for (var doc in requests) {
-                  if (!countdowns.containsKey(doc.id)) startCountdown(doc.id);
-                }
-
-                return Column(
-                  children: requests.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    final countdown = countdowns[doc.id] ?? 30;
-                    final isCounting = countdown > 0;
-
-                    return Card(
-                      margin: EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        title: Text('${data['service']} Needed'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (data['description'] != null)
-                              Text(data['description']),
-                            SizedBox(height: 4),
-                            Text('📍 ${data['serviceLocationAddress']}'),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.timer, size: 14, color: Colors.blue),
-                                SizedBox(width: 4),
-                                Text(
-                                  isCounting
-                                      ? 'Respond within $countdown s'
-                                      : 'Time expired',
-                                  style: TextStyle(
-                                    color: isCounting ? Colors.blue : Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.check, color: Colors.green),
-                              onPressed: isCounting
-                                  ? () => _updateStatus(doc.id, "accepted")
-                                  : null,
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.close, color: Colors.red),
-                              onPressed: isCounting
-                                  ? () => _updateStatus(doc.id, "rejected")
-                                  : null,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
+            Text(
+              "Work Showcases",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
 
-            SizedBox(height: 20),
-
-            // PREVIOUS REQUESTS
-            Text('Previous Requests',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
 
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('requests')
-                  .where('technicianId', isEqualTo: user!.uid)
-                  .where('status',
-                  whereIn: ['accepted', 'rejected', 'declined'])
-                  .limit(10)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return Center(child: CircularProgressIndicator());
-                }
-
-                final prevRequests = snapshot.data!.docs;
-
-                if (prevRequests.isEmpty) return Text("No previous requests");
-
-                return Column(
-                  children: prevRequests.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    final status = data['status'] ?? '';
-
-                    return Card(
-                      margin: EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        title: Text('${data['service']} Needed'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (data['createdAt'] != null)
-                              Text(formatDate(data['createdAt'])),
-                            Text(data['description']),
-                            SizedBox(height: 4),
-                            Text(
-                              status.toUpperCase(),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: getStatusColor(status),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
+            ShowcaseFeedWidget(),
           ],
         ),
       ),

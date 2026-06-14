@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../core/app_card.dart';
+import '../showcase/create_showcase_screen.dart';
+import '../showcase/showcase_gallery_screen.dart';
 
 class CompletedJobsScreen extends StatefulWidget {
   const CompletedJobsScreen({super.key});
@@ -23,6 +25,7 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
   double avgOverall = 0;
 
   Map<String, dynamic>? technicianData;
+  Map<String, Map<String, dynamic>?> showcaseMap = {};
 
   @override
   void initState() {
@@ -90,6 +93,7 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
         final jobId = jobDoc.id;
 
         return {
+          "jobId": jobDoc.id,
           "job": job,
           "review": reviewMap[jobId] ?? {},
         };
@@ -103,6 +107,23 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
 
         return (bTime as Timestamp).compareTo(aTime as Timestamp);
       });
+
+      final showcaseSnap = await FirebaseFirestore.instance
+          .collection('showcases')
+          .where('technicianId', isEqualTo: technicianId)
+          .get();
+
+      for (var doc in showcaseSnap.docs) {
+        final data = doc.data();
+        final requestId = data['requestId'];
+
+        if (requestId != null) {
+          showcaseMap[requestId] = {
+            "id": doc.id,
+            "data": data,
+          };
+        }
+      }
 
       if (mounted) setState(() {});
     } catch (e, stack) {
@@ -190,6 +211,7 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
   Widget _buildJobCard(Map<String, dynamic> item) {
     final job = item['job'] ?? {};
     final review = item['review'] ?? {};
+    final jobId = item['jobId'];
 
     final completedAt =
     (job['timeline']?['completedAt'] as Timestamp?)?.toDate();
@@ -202,6 +224,9 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
     final serviceRating = ((review['serviceRating'] ?? 0) as num).toDouble();
     final overall = ((review['rating'] ?? 0) as num).toDouble();
     final comment = review['review'] ?? "";
+
+    final showcase = showcaseMap[jobId];
+    final hasShowcase = showcase != null;
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
@@ -238,6 +263,47 @@ class _CompletedJobsScreenState extends State<CompletedJobsScreen> {
               "No review yet",
               style: TextStyle(color: Colors.grey),
             ),
+
+          const SizedBox(height: 12),
+
+          if (hasShowcase) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.visibility),
+                label: const Text("View Showcase"),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ShowcaseGalleryScreen(
+                        showcaseData: showcase['data'],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.photo_library),
+                label: const Text("Create Showcase"),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreateShowcaseScreen(
+                        requestId: jobId,
+                        jobData: job,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ]
         ],
       ),
     );

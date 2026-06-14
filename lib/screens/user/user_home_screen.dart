@@ -16,6 +16,8 @@ import 'package:kwikpro/screens/user/user_job_history_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../../widgets/showcase_feed_widget.dart';
+
 class UserHomeScreen extends ConsumerStatefulWidget {
   const UserHomeScreen({super.key});
 
@@ -530,55 +532,55 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final filteredServices = services.where((service) {
       return service.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
+
     return Scaffold(
       key: _scaffoldKey,
       endDrawer: _buildDrawer(context),
+
+      // ================= STATIC APP BAR =================
       appBar: AppBar(
         title: Column(
-
-            children: [
-              Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const SizedBox(width: 10),
+                Text('Hi, $name'),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0),
+              child: Row(
                 children: [
-
-                  SizedBox(width: 10),
-                  Text('Hi, $name'),
-                ],
-              ),
-
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: Row(
-                  children: [
-                    Icon(Icons.location_on, size: 14, color: Colors.grey),
-                    SizedBox(width: 2),
-                    Text(
-                      location,
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    SizedBox(width: 6),
-
-                    // Future: Change button
-                    GestureDetector(
-                      onTap: _openLocationPicker,
-                      child: Text(
-                        "Edit",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                  const SizedBox(width: 2),
+                  Text(
+                    location,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: _openLocationPicker,
+                    child: const Text(
+                      "Edit",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
+          ],
+        ),
 
-            ],
-          ),
         actions: [
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -595,18 +597,16 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
               return Stack(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.notifications_none, size: 35,),
+                    icon: const Icon(Icons.notifications_none, size: 35),
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                          const UserNotificationScreen(),
+                          builder: (_) => const UserNotificationScreen(),
                         ),
                       );
                     },
                   ),
-
                   if (count > 0)
                     Positioned(
                       right: 8,
@@ -630,7 +630,9 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
               );
             },
           ),
-          SizedBox(width: 4,),
+
+          const SizedBox(width: 4),
+
           GestureDetector(
             onTap: () => _scaffoldKey.currentState?.openEndDrawer(),
             child: Padding(
@@ -638,62 +640,49 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
               child: CircleAvatar(
                 radius: 18,
                 backgroundImage:
-                profilePic.isNotEmpty
-                    ? NetworkImage(profilePic)
-                    : null,
-                child: profilePic.isEmpty
-                    ? const Icon(Icons.person)
-                    : null,
+                profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
+                child: profilePic.isEmpty ? const Icon(Icons.person) : null,
               ),
             ),
           ),
         ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
 
-          // Header Section
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "What help do you need today?",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+        // ================= STATIC SEARCH BAR =================
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(70),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: "Search for services (e.g plumber, electrician)",
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                SizedBox(height: 10),
-
-                // Search Field
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: "Search for services (e.g plumber, electrician)",
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                    });
-                  },
-                ),
-              ],
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
             ),
           ),
+        ),
+      ),
 
+      // ================= SINGLE SCROLL BODY =================
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 20),
+        children: [
 
-          // Services Cards
-          Expanded(
-
+          // ================= SERVICES =================
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: GridView.builder(
-
-              padding: const EdgeInsets.all(16),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
               itemCount: filteredServices.length,
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: 180,
@@ -703,11 +692,31 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
               ),
               itemBuilder: (context, index) {
                 final service = filteredServices[index];
-
                 return ServiceCard(service: service);
               },
             ),
-          )
+          ),
+
+          const SizedBox(height: 20),
+
+          // ================= SHOWCASE TITLE =================
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              "Work Showcases",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // ================= SHOWCASE FEED =================
+          const ShowcaseFeedWidget(),
+
+          const SizedBox(height: 20),
         ],
       ),
     );

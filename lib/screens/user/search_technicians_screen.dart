@@ -25,6 +25,8 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
   String _issue = "";
 
   final TextEditingController _issueController = TextEditingController();
+  final TextEditingController _locationController =
+  TextEditingController();
 
   bool _loading = false;
 
@@ -35,6 +37,8 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
 
   double? userLat;
   double? userLng;
+
+
 
   final List<String> services = [
     "Car Mechanic",
@@ -192,6 +196,112 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
     setState(() => _loading = false);
   }
 
+  bool _locating = false;
+
+  Future<void> _getLocation() async {
+    try {
+      setState(() {
+        _locating = true;
+      });
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      userLat = pos.latitude;
+      userLng = pos.longitude;
+
+      final address = await _reverseGeocode(
+        pos.latitude,
+        pos.longitude,
+      );
+
+      setState(() {
+        _location = address;
+        _locationController.text = address;
+        _locating = false;
+      });
+    } catch (e) {
+      setState(() {
+        _locating = false;
+      });
+    }
+  }
+
+  Future<String> _reverseGeocode(double lat, double lng) async {
+    try {
+      final url = Uri.parse(
+        "https://nominatim.openstreetmap.org/reverse"
+            "?format=json"
+            "&lat=$lat"
+            "&lon=$lng"
+            "&zoom=18"
+            "&addressdetails=1",
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          "User-Agent": "KwikProApp/1.0 (your_email@example.com)",
+        },
+      );
+
+      if (response.statusCode != 200) {
+        return "Unknown location";
+      }
+
+      final data = json.decode(response.body);
+      final address = data["address"];
+
+      String pick(List<String?> values) {
+        for (final v in values) {
+          if (v != null && v.trim().isNotEmpty) return v;
+        }
+        return "";
+      }
+
+      final area = pick([
+        address?["neighbourhood"],
+        address?["suburb"],
+        address?["quarter"],
+        address?["residential"],
+        address?["hamlet"],
+      ]);
+
+      final district = pick([
+        address?["city_district"],
+        address?["state_district"],
+        address?["county"],
+      ]);
+
+      final city = pick([
+        address?["city"],
+        address?["town"],
+        address?["village"],
+      ]);
+
+      final state = address?["state"];
+
+      final parts = [
+        area,
+        district,
+        city,
+        state,
+      ].where((e) => e != null && e.toString().trim().isNotEmpty).toList();
+
+      return parts.isNotEmpty ? parts.join(", ") : "Unknown location";
+    } catch (e) {
+      debugPrint("NOMINATIM ERROR: $e");
+      return "Unknown location";
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getLocation();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,14 +329,24 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
               /// LOCATION
               _inputCard(
                 child: TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: "Enter Service Location",
-                    prefixIcon: Icon(Icons.location_on),
+                  controller: _locationController,
+                  decoration: InputDecoration(
+                    labelText: "Service Location",
                     border: InputBorder.none,
+                    prefixIcon: _locating
+                        ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    )
+                        : const Icon(Icons.location_on),
                   ),
                   onChanged: (v) => _location = v,
-                  validator: (v) =>
-                  v == null || v.isEmpty ? "Enter location" : null,
                 ),
               ),
 

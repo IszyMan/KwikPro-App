@@ -59,10 +59,11 @@ class _ServiceJobRequestScreenState extends State<ServiceJobRequestScreen> {
     } else {
       _locationController.text = "Detecting location...";
     }
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getLocation();
     });
+
+
   }
 
   /// =========================

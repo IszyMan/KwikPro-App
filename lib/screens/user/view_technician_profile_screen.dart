@@ -376,7 +376,7 @@ class _ViewTechnicianProfileScreenState
 
                             Tab(text: "Technician Bio"),
 
-                            Tab(text: "Previous Work images"),
+                            Tab(text: "Previous Work Posts"),
                           ],
                         ),
                       ),
