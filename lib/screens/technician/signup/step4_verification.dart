@@ -92,10 +92,7 @@ class _Step4VerificationState extends ConsumerState<Step4Verification> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// =========================
-            /// SAME STYLE AS STEP 3
-            /// BUT SINGLE ITEM ONLY
-            /// =========================
+
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

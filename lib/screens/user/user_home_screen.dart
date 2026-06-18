@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geocoding/geocoding.dart';
+import '../../services/location_service.dart';
 import 'package:kwikpro/providers/auth_provider.dart';
 import 'package:kwikpro/screens/onboarding/welcome_screen.dart';
 import 'package:kwikpro/screens/user/privacy_policy.dart';
@@ -54,6 +54,10 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   void initState() {
     super.initState();
     _loadUser();
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) {
+      _loadCurrentLocation();
+    });
     NotificationService.saveFcmToken(collection: 'users');
     NotificationService.setupForegroundNotifications(context);
   }
@@ -388,7 +392,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   Future<void> _updateUserLocation(double lat, double lng) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    final address = await _getAddressFromLatLng(lat, lng);
+    final address = await LocationService.reverseGeocode(lat, lng);
 
     setState(() {
       userLat = lat;
@@ -407,67 +411,41 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   }
 
 
+  Future<void> _loadCurrentLocation() async {
+    setState(() {
+      location = "Detecting location...";
+    });
 
-  Future<String> _getAddressFromLatLng(double lat, double lng) async {
-    try {
-      final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1",
-      );
+    final result = await LocationService.getCurrentLocation();
 
-      final response = await http.get(
-        url,
-        headers: {
-          // REQUIRED by Nominatim policy
-          "User-Agent": "KwikProApp/1.0 (your_email@example.com)",
-        },
-      );
+    if (!mounted) return;
 
-      if (response.statusCode != 200) {
-        print("OSM ERROR: ${response.body}");
-        return "Unknown";
-      }
-
-      final data = json.decode(response.body);
-
-      final address = data["address"];
-
-      final suburb = address?["suburb"] ??
-          address?["neighbourhood"] ??
-          address?["residential"] ??
-          "";
-
-      final city = address?["city"] ??
-          address?["town"] ??
-          address?["village"] ??
-          address?["municipality"] ??
-          "";
-
-      final district = address?["county"] ??
-          address?["state_district"] ??
-          "";
-
-      final state = address?["state"] ?? "";
-
-      String result = "";
-
-      if (suburb.isNotEmpty) {
-        result += suburb;
-      }
-
-      if (district.isNotEmpty) {
-        result += result.isEmpty ? district : ", $district";
-      }
-
-      if (state.isNotEmpty) {
-        result += result.isEmpty ? state : ", $state";
-      }
-
-      return result.isNotEmpty ? result : "Unknown";
-
-    } catch (e) {
-      print("OSM GEOCODING ERROR: $e");
-      return "Unknown";
+    //  CASE 1: location failed
+    if (result == null) {
+      setState(() {
+        location = "Location not available. Tap to set manually.";
+      });
+      return;
     }
+
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({
+      'lat': result['lat'],
+      'lng': result['lng'],
+      'currentAddress': result['address'],
+    });
+
+    if (!mounted) return;
+
+    setState(() {
+      location = result['address'];
+      userLat = result['lat'];
+      userLng = result['lng'];
+    });
   }
 
 
@@ -487,51 +465,16 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
     final data = doc.data();
 
-    double? lat = data?['lat'];
-    double? lng = data?['lng'];
-
-    print("Testing reverse geocode...");
-    print("Lat: $lat");
-    print("Lng: $lng");
-
     //  FIRST SET BASIC USER DATA
     setState(() {
       name = data?['name'] ?? 'User';
       profilePic = data?['profilePic'] ?? '';
-      location = data?['currentAddress'] ?? 'Unknown';
-      userLat = lat;
-      userLng = lng;
+
     });
 
-    //  SAFE CHECK BEFORE GEOCODING
-    if (lat == null || lng == null) {
-      print("No coordinates found, skipping geocoding");
-      return;
-    }
 
-    try {
-      final newAddress = await _getAddressFromLatLng(lat, lng);
-
-      print("ADDRESS FOUND: $newAddress");
-
-      if (newAddress.isNotEmpty && newAddress != "Unknown") {
-        setState(() {
-          location = newAddress;
-        });
-
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .update({
-          'currentAddress': newAddress,
-        });
-      }
-    } catch (e) {
-      print("Reverse geocode error: $e");
-    }
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     final filteredServices = services.where((service) {
@@ -555,18 +498,18 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
             ),
             Padding(
               padding: const EdgeInsets.only(left: 8.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                  const SizedBox(width: 2),
-                  Text(
-                    location,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: _openLocationPicker,
-                    child: const Text(
+              child: GestureDetector(
+                onTap: _openLocationPicker,
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                    const SizedBox(width: 2),
+                    Text(
+                      location,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
                       "Edit",
                       style: TextStyle(
                         fontSize: 12,
@@ -574,9 +517,9 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              )
             ),
           ],
         ),
@@ -703,7 +646,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              "Work Showcases",
+              "Technician Showcases",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

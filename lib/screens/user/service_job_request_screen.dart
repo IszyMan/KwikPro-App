@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import '../../services/location_service.dart';
 
 import 'technician_search_result_screen.dart';
 
@@ -60,140 +61,59 @@ class _ServiceJobRequestScreenState extends State<ServiceJobRequestScreen> {
       _locationController.text = "Detecting location...";
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _getLocation();
+      _loadCurrentLocation();
     });
 
 
   }
 
-  /// =========================
-  /// GET CURRENT LOCATION
-  /// =========================
-  Future<void> _getLocation() async {
+  Future<void> _loadCurrentLocation() async {
     try {
       setState(() {
         locating = true;
       });
 
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
+      final result =
+      await LocationService
+          .getCurrentLocation();
+
+      if (result == null) {
         setState(() {
           locating = false;
-          _locationController.text = "Location services disabled";
+          _locationController.text =
+          "Unable to get location";
         });
         return;
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
+      userLat =
+      result["lat"];
 
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        setState(() {
-          locating = false;
-          _locationController.text = "Location permission denied";
-        });
-        return;
-      }
-
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      userLat = pos.latitude;
-      userLng = pos.longitude;
+      userLng =
+      result["lng"];
 
       if (_userEditedLocation) {
-        setState(() => locating = false);
+        setState(() {
+          locating = false;
+        });
         return;
       }
 
-      final address = await _reverseGeocode(pos.latitude, pos.longitude);
-
       setState(() {
         locating = false;
-        _locationController.text = address;
+        _locationController.text =
+        result["address"];
       });
     } catch (e) {
       setState(() {
         locating = false;
-        _locationController.text = "Unable to detect location";
+        _locationController.text =
+        "Unable to get location";
       });
-
-      debugPrint("LOCATION ERROR: $e");
     }
   }
 
-  Future<String> _reverseGeocode(double lat, double lng) async {
-    try {
-      final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/reverse"
-            "?format=json"
-            "&lat=$lat"
-            "&lon=$lng"
-            "&zoom=18"
-            "&addressdetails=1",
-      );
 
-      final response = await http.get(
-        url,
-        headers: {
-          "User-Agent": "KwikProApp/1.0 (your_email@example.com)",
-        },
-      );
-
-      if (response.statusCode != 200) {
-        return "Unknown location";
-      }
-
-      final data = json.decode(response.body);
-      final address = data["address"];
-
-      String pick(List<String?> values) {
-        for (final v in values) {
-          if (v != null && v.trim().isNotEmpty) return v;
-        }
-        return "";
-      }
-
-      final area = pick([
-        address?["neighbourhood"],
-        address?["suburb"],
-        address?["quarter"],
-        address?["residential"],
-        address?["hamlet"],
-      ]);
-
-      final district = pick([
-        address?["city_district"],
-        address?["state_district"],
-        address?["county"],
-      ]);
-
-      final city = pick([
-        address?["city"],
-        address?["town"],
-        address?["village"],
-      ]);
-
-      final state = address?["state"];
-
-      final parts = [
-        area,
-        district,
-        city,
-        state,
-      ].where((e) => e != null && e.toString().trim().isNotEmpty).toList();
-
-      return parts.isNotEmpty ? parts.join(", ") : "Unknown location";
-    } catch (e) {
-      debugPrint("NOMINATIM ERROR: $e");
-      return "Unknown location";
-    }
-  }
 
   Future<void> _pickImage() async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -236,7 +156,14 @@ class _ServiceJobRequestScreenState extends State<ServiceJobRequestScreen> {
     setState(() => loading = true);
 
     if (userLat == null || userLng == null) {
-      await _getLocation();
+      final result =
+      await LocationService
+          .getCurrentLocation();
+
+      if (result != null) {
+        userLat = result["lat"];
+        userLng = result["lng"];
+      }
     }
 
     if (userLat == null || userLng == null) {

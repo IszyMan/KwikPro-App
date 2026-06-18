@@ -172,7 +172,8 @@ class TechnicianSignupController
       final auth = ref.read(authProvider);
       final firestore = ref.read(firestoreServiceProvider);
 
-      final location = await LocationService().getCurrentLocation();
+      final location =
+      await LocationService.getCurrentLocation();
 
       final tech = TechnicianModel(
         uid: auth.user!.uid,

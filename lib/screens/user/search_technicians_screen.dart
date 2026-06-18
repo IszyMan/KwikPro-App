@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import '../../services/location_service.dart';
 
 import 'technician_search_result_screen.dart';
 
@@ -168,10 +169,16 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
     setState(() => _loading = true);
 
     try {
-      final pos = await Geolocator.getCurrentPosition();
+      final result = await LocationService.getCurrentLocation();
 
-      userLat = pos.latitude;
-      userLng = pos.longitude;
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enable location or set manually")),
+        );
+        return;
+      }
+      userLat = result['lat'];
+      userLng = result['lng'];
 
       Navigator.push(
         context,
@@ -198,108 +205,39 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
 
   bool _locating = false;
 
-  Future<void> _getLocation() async {
-    try {
+  Future<void> _loadLocation() async {
+    setState(() {
+      _locating = true;
+    });
+
+    final result = await LocationService.getCurrentLocation();
+
+    if (!mounted) return;
+
+    if (result == null) {
       setState(() {
-        _locating = true;
-      });
-
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      userLat = pos.latitude;
-      userLng = pos.longitude;
-
-      final address = await _reverseGeocode(
-        pos.latitude,
-        pos.longitude,
-      );
-
-      setState(() {
-        _location = address;
-        _locationController.text = address;
+        _location = "Unable to detect location. Please set manually.";
+        _locationController.text = _location;
         _locating = false;
       });
-    } catch (e) {
-      setState(() {
-        _locating = false;
-      });
+      return;
     }
+
+    setState(() {
+      userLat = result['lat'];
+      userLng = result['lng'];
+      _location = result['address'];
+      _locationController.text = result['address'];
+      _locating = false;
+    });
   }
 
-  Future<String> _reverseGeocode(double lat, double lng) async {
-    try {
-      final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/reverse"
-            "?format=json"
-            "&lat=$lat"
-            "&lon=$lng"
-            "&zoom=18"
-            "&addressdetails=1",
-      );
 
-      final response = await http.get(
-        url,
-        headers: {
-          "User-Agent": "KwikProApp/1.0 (your_email@example.com)",
-        },
-      );
-
-      if (response.statusCode != 200) {
-        return "Unknown location";
-      }
-
-      final data = json.decode(response.body);
-      final address = data["address"];
-
-      String pick(List<String?> values) {
-        for (final v in values) {
-          if (v != null && v.trim().isNotEmpty) return v;
-        }
-        return "";
-      }
-
-      final area = pick([
-        address?["neighbourhood"],
-        address?["suburb"],
-        address?["quarter"],
-        address?["residential"],
-        address?["hamlet"],
-      ]);
-
-      final district = pick([
-        address?["city_district"],
-        address?["state_district"],
-        address?["county"],
-      ]);
-
-      final city = pick([
-        address?["city"],
-        address?["town"],
-        address?["village"],
-      ]);
-
-      final state = address?["state"];
-
-      final parts = [
-        area,
-        district,
-        city,
-        state,
-      ].where((e) => e != null && e.toString().trim().isNotEmpty).toList();
-
-      return parts.isNotEmpty ? parts.join(", ") : "Unknown location";
-    } catch (e) {
-      debugPrint("NOMINATIM ERROR: $e");
-      return "Unknown location";
-    }
-  }
 
   @override
   void initState() {
     super.initState();
-    _getLocation();
+    _loadLocation();
   }
 
   @override

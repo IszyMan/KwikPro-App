@@ -556,7 +556,7 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
            SizedBox(height: 20),
 
             Text(
-              "Work Showcases",
+              "Technicians Showcases",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

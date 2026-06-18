@@ -91,6 +91,7 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(),
       backgroundColor: Colors.grey[100],
 
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
