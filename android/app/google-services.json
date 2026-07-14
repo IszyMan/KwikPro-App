@@ -9,13 +9,32 @@
       "client_info": {
         "mobilesdk_app_id": "1:648958053897:android:287e9ce50154ac8e36b2d8",
         "android_client_info": {
-          "package_name": "com.example.kwikpro"
+          "package_name": "com.kwikpro.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDrnWTKKc7dUK3L-xLVi2dwFuCN8cHCYKk"
+          "current_key": "AIzaSyChxPWJW44ayIvoylr6VQK-ncZeSGUg_GE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:648958053897:android:ce43917f99fc93b436b2d8",
+        "android_client_info": {
+          "package_name": "com.kwikpro.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChxPWJW44ayIvoylr6VQK-ncZeSGUg_GE"
         }
       ],
       "services": {

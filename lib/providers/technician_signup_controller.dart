@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/technician_model.dart';
+import 'package:kwikpro/models/technician_model.dart';
 import '../models/technician_signup_state.dart';
 import '../screens/technician/technician_main_screen.dart';
 import '../services/location_service.dart';

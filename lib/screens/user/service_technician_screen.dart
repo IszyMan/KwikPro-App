@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import '../../models/technician_model.dart';
+import 'package:kwikpro/models/technician_model.dart';
 import '../../widgets/technician_card.dart';
 
 

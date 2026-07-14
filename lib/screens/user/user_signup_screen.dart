@@ -70,6 +70,7 @@ class _UserSignupScreenState extends ConsumerState<UserSignupScreen> {
     final userData = {
       'uid': uid,
       'name': nameController.text.trim(),
+      'phoneNumber': auth.user!.phoneNumber,
       'profilePic': imageController.text.trim(),
       'createdAt': FieldValue.serverTimestamp(),
 

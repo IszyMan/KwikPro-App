@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:kwikpro/screens/user/view_technician_profile_screen.dart';
 
 import '../../widgets/technician_card.dart';
-import '../../models/technician_model.dart';
+import 'package:kwikpro/models/technician_model.dart';
 
 class UserJobHistoryScreen extends StatefulWidget {
   const UserJobHistoryScreen({super.key});

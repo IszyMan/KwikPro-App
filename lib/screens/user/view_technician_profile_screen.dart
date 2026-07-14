@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../models/technician_model.dart';
+import 'package:kwikpro/models/technician_model.dart';
 import '../../services/notification_service.dart';
 import 'active_job_screen.dart';
 
