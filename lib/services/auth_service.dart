@@ -38,23 +38,36 @@ class AuthService {
         onCodeSent('web');  // or onCodeSent(_confirmationResult.verificationId ?? 'web');
       } else {
         print("MOBILE FLOW - Phone: $phoneNumber");
+        print("========== OTP DEBUG ==========");
+        print("Phone: $phoneNumber");
+        print("Firebase initialized");
 
         await _auth.verifyPhoneNumber(
           phoneNumber: phoneNumber,
+
           verificationCompleted: (PhoneAuthCredential credential) async {
-            // Auto-verification (SMS read automatically on Android)
-            await _auth.signInWithCredential(credential);
-            // Optionally notify UI of success here
+            print("verificationCompleted");
           },
+
           verificationFailed: (FirebaseAuthException e) {
-            onError(e.message ?? 'Verification failed');
+            print("verificationFailed");
+            print(e.code);
+            print(e.message);
+
+            onError(e.message ?? e.code);
           },
+
           codeSent: (String verificationId, int? resendToken) {
+            print("codeSent");
+            print(verificationId);
+
             onCodeSent(verificationId);
           },
-          timeout: const Duration(seconds: 60),
+
           codeAutoRetrievalTimeout: (String verificationId) {
-            // Optional: trigger resend UI
+            print("timeout");
+
+            onCodeSent(verificationId);
           },
         );
       }

@@ -1,13 +1,15 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../providers/technician_signup_controller.dart';
+import '../../../widgets/app_primary_button.dart';
+import '../../../widgets/onboarding_header.dart';
+import '../../../widgets/upload_image_card.dart';
 
 class Step1ProfileImage extends ConsumerWidget {
   const Step1ProfileImage({super.key});
@@ -21,157 +23,171 @@ class Step1ProfileImage extends ConsumerWidget {
     final state = ref.watch(technicianSignupController);
 
     Future<String?> uploadToCloudinary(XFile file) async {
-      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+      final uri = Uri.parse(
+        'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+      );
+
       final bytes = await file.readAsBytes();
 
       final request = http.MultipartRequest('POST', uri)
         ..fields['upload_preset'] = uploadPreset
-        ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: file.name));
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: file.name,
+          ),
+        );
 
       final response = await request.send();
-      final resBody = await response.stream.bytesToString();
+      final body = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(resBody);
-        return data['secure_url'];
-      } else {
-        print('Cloudinary upload failed: $resBody');
-        return null;
+        return jsonDecode(body)['secure_url'];
       }
+
+      debugPrint(body);
+      return null;
     }
 
-    Future pickAndUpload() async {
+    Future<void> pickAndUpload() async {
       final source = await showModalBottomSheet<ImageSource>(
         context: context,
-        builder: (_) => Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.camera),
-              title: Text("Take Selfie"),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: Icon(Icons.photo),
-              title: Text("Choose from Gallery"),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
+        builder: (_) => SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text("Take Selfie"),
+                onTap: () =>
+                    Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text("Choose from Gallery"),
+                onTap: () =>
+                    Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
       );
 
       if (source == null) return;
 
-      final pickedFile = await picker.pickImage(source: source);
-      if (pickedFile == null) return;
+      final picked = await picker.pickImage(source: source);
 
-      // STEP 1: SHOW LOCAL PREVIEW IMMEDIATELY
-      ref.read(technicianSignupController.notifier)
-          .addImage(type: 'profile', path: pickedFile.path);
+      if (picked == null) return;
 
-      // STEP 2: UPLOAD IN BACKGROUND
-      final url = await uploadToCloudinary(pickedFile);
+      ref
+          .read(technicianSignupController.notifier)
+          .addImage(
+        type: 'profile',
+        path: picked.path,
+      );
 
-      // STEP 3: REPLACE WITH CLOUD URL
+      final url = await uploadToCloudinary(picked);
+
       if (url != null) {
-        ref.read(technicianSignupController.notifier)
-            .addImage(type: 'profile', path: url);
+        ref
+            .read(technicianSignupController.notifier)
+            .addImage(
+          type: 'profile',
+          path: url,
+        );
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            final notifier =
-            ref.read(technicianSignupController.notifier);
+    final hasImage =
+        state.profileImage != null &&
+            state.profileImage!.isNotEmpty;
 
-            if (state.step > 0) {
-              notifier.back();
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
-        title: const Text("Upload Profile Image"),
-      ),
-      body: Padding(padding: EdgeInsetsGeometry.all(16),
-        child: Column(
-          children: [
+    ImageProvider? imageProvider;
+
+    if (hasImage) {
+      imageProvider = state.profileImage!.startsWith('http')
+          ? NetworkImage(state.profileImage!)
+          : FileImage(File(state.profileImage!));
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const OnboardingHeader(
+            title: Text("Add Your Profile Photo"),
+            subtitle:
+            "A clear profile photo helps customers recognize and trust you.",
+          ),
+
+          const SizedBox(height: 30),
+
+          UploadImageCard(
+            title: hasImage
+                ? "Change Profile Photo"
+                : "Upload Profile Photo",
+            subtitle:
+            "Take a selfie or choose one from your gallery",
+            onTap: pickAndUpload,
+          ),
+
+          if (hasImage) ...[
+            const SizedBox(height: 30),
+
             Stack(
-              alignment: Alignment.center,
+              alignment: Alignment.topRight,
               children: [
                 CircleAvatar(
-                  radius: 50,
-                  backgroundImage: state.profileImage != null &&
-                      state.profileImage!.isNotEmpty
-                      ? (state.profileImage!.startsWith('http')
-                      ? NetworkImage(state.profileImage!)
-                      : FileImage(File(state.profileImage!)) as ImageProvider)
-                      : null,
-                  child: (state.profileImage == null ||
-                      state.profileImage!.isEmpty)
-                      ? const Icon(Icons.person, size: 50)
-                      : null,
+                  radius: 70,
+                  backgroundImage: imageProvider,
                 ),
 
-                ///  REMOVE BUTTON
-                if (state.profileImage != null &&
-                    state.profileImage!.isNotEmpty)
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: () {
-                        ref
-                            .read(technicianSignupController.notifier)
-                            .addImage(type: 'profile', path: '');
-                      },
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.black,
-                          shape: BoxShape.circle,
-                        ),
-                        padding: const EdgeInsets.all(6),
-                        child: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
+                InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () {
+                    ref
+                        .read(
+                      technicianSignupController.notifier,
+                    )
+                        .addImage(
+                      type: 'profile',
+                      path: '',
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Colors.black87,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 18,
                     ),
                   ),
+                ),
               ],
             ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: pickAndUpload,
-              child: Text(
-                (state.profileImage == null ||
-                    state.profileImage!.isEmpty)
-                    ? "Upload / Take Selfie"
-                    : "Change Image",
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: (state.profileImage != null &&
-                  state.profileImage!.isNotEmpty)
-                  ? () => ref
-                  .read(technicianSignupController.notifier)
-                  .nextStep()
-                  : null,
-              child: const Text("Continue"),
-            ),
           ],
-        ),
+
+          const SizedBox(height: 40),
+
+          AppPrimaryButton(
+            text: "Continue",
+            onPressed: hasImage
+                ? () {
+              ref
+                  .read(
+                technicianSignupController.notifier,
+              )
+                  .nextStep();
+            }
+                : null,
+          ),
+
+          const SizedBox(height: 20),
+        ],
       ),
     );
-
   }
 }

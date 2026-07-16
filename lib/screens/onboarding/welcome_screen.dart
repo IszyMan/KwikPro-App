@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_colors.dart';
+import '../../widgets/app_logo.dart';
+import '../../widgets/app_primary_button.dart';
+import '../../widgets/onboarding_header.dart';
 import 'account_type_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -17,50 +21,84 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Icon(Icons.build_circle_outlined, size: 100, color: Colors.blue),
-            SizedBox(height: 32),
-
-            // App Title
-            const Text(
-              "Welcome to KwikPro",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFF8FBFF),
+                Colors.white,
+              ],
             ),
-
-            const SizedBox(height: 10),
-
-            const Text(
-              "Find trusted Repair technicians nearby or offer your services easily.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.blueAccent,
-              ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 20,
             ),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
 
-            const Spacer(),
+                // Reusable Logo
+                const AppLogo(size: 120),
 
-            // Get Started Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () => _goToNext(context),
-                child: const Text("Get Started"),
-              ),
+                const SizedBox(height: 35),
+
+                // Reusable Header
+                OnboardingHeader(
+                  title: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: "Welcome to\n",
+                          style: TextStyle(
+                            fontSize: 25,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "KwikPro",
+                          style: TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  subtitle:
+                  "Book trusted repair professionals near you or grow your business by offering your services.",
+                ),
+
+                const Spacer(),
+
+                const Text(
+                  "Fast • Reliable • Trusted",
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Reusable Button
+                AppPrimaryButton(
+                  text: "Get Started",
+                  onPressed: () => _goToNext(context),
+                ),
+
+                const SizedBox(height: 24),
+              ],
             ),
-
-            const SizedBox(height: 30),
-          ],
+          ),
         ),
       ),
     );

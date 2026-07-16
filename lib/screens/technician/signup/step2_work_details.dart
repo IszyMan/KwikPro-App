@@ -1,78 +1,194 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../providers/technician_signup_controller.dart';
 
-class Step2WorkDetails extends ConsumerWidget {
+import '../../../providers/technician_signup_controller.dart';
+import '../../../widgets/app_primary_button.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../widgets/onboarding_header.dart';
+
+
+class Step2WorkDetails extends ConsumerStatefulWidget {
   const Step2WorkDetails({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(technicianSignupController);
+  ConsumerState<Step2WorkDetails> createState() =>
+      _Step2WorkDetailsState();
+}
 
-    final yearsController =
-    TextEditingController(text: state.years?.toString() ?? '');
-    final addressController = TextEditingController(text: state.address ?? '');
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            final notifier =
-            ref.read(technicianSignupController.notifier);
 
-            if (state.step > 0) {
-              notifier.back();
-            } else {
-              Navigator.pop(context);
-            }
-          },
+class _Step2WorkDetailsState
+    extends ConsumerState<Step2WorkDetails> {
+
+  late TextEditingController yearsController;
+  late TextEditingController addressController;
+
+
+
+  @override
+  void initState() {
+    super.initState();
+
+    final state =
+    ref.read(technicianSignupController);
+
+
+    yearsController =
+        TextEditingController(
+          text: state.years?.toString() ?? '',
+        );
+
+
+    addressController =
+        TextEditingController(
+          text: state.address ?? '',
+        );
+  }
+
+
+
+  @override
+  void dispose() {
+
+    yearsController.dispose();
+
+    addressController.dispose();
+
+    super.dispose();
+
+  }
+
+
+
+  @override
+  Widget build(BuildContext context) {
+
+
+    final notifier =
+    ref.read(
+      technicianSignupController.notifier,
+    );
+
+
+
+    return Column(
+
+      crossAxisAlignment:
+      CrossAxisAlignment.start,
+
+
+      mainAxisSize:
+      MainAxisSize.min,
+
+
+      children: [
+
+
+        const OnboardingHeader(
+
+          title: Text(
+            "Work Details",
+          ),
+
+          subtitle:
+          "Tell customers about your experience and where you operate.",
+
         ),
-        title: const Text("Enter work Details"),
-      ),
-      body: Padding(padding: EdgeInsetsGeometry.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Years of experience
-          TextField(
-            controller: yearsController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: "Years of Experience",
-              border: OutlineInputBorder(),
-            ),
-          ),
-          SizedBox(height: 20),
 
-          // Address
-          TextField(
-            controller: addressController,
-            decoration: InputDecoration(
-              labelText: "Area of Operation (e.g., Lekki, Ajah)",
-              border: OutlineInputBorder(),
-            ),
-          ),
-          SizedBox(height: 20),
 
-          // Next button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                final years = int.tryParse(yearsController.text) ?? 0;
-                ref
-                    .read(technicianSignupController.notifier)
-                    .setWorkDetails(years, addressController.text);
-                ref.read(technicianSignupController.notifier).nextStep();
-              },
-              child: Text("Next"),
-            ),
-          ),
-        ],
-      )
-      ),
+
+        const SizedBox(height:30),
+
+
+
+        AppTextField(
+
+          controller:
+          yearsController,
+
+          label:
+          "Years of Experience",
+
+          hint:
+          "e.g. 5",
+
+          icon:
+          Icons.work_outline,
+
+          keyboardType:
+          TextInputType.number,
+
+        ),
+
+
+
+        const SizedBox(height:22),
+
+
+
+        AppTextField(
+
+          controller:
+          addressController,
+
+          label:
+          "Area of Operation",
+
+          hint:
+          "e.g. Lekki, Ajah",
+
+          icon:
+          Icons.location_on_outlined,
+
+        ),
+
+
+
+        const SizedBox(height:40),
+
+
+
+        AppPrimaryButton(
+
+          text:
+          "Continue",
+
+
+          onPressed: () {
+
+
+            final years =
+                int.tryParse(
+                  yearsController.text,
+                ) ?? 0;
+
+
+
+            notifier.setWorkDetails(
+
+              years,
+
+              addressController.text.trim(),
+
+            );
+
+
+            notifier.nextStep();
+
+
+          },
+
+        ),
+
+
+
+        const SizedBox(height:20),
+
+
+      ],
+
     );
 
   }
+
 }

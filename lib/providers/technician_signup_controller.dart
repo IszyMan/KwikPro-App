@@ -175,42 +175,237 @@ class TechnicianSignupController
       final location =
       await LocationService.getCurrentLocation();
 
+
       final tech = TechnicianModel(
+
         uid: auth.user!.uid,
+
         name: state.name,
+
         service: state.service!,
+
         skills: state.skills,
+
         yearsOfExperience: state.years,
+
         address: state.address,
+
         lat: location?['lat'],
+
         long: location?['lng'],
+
         profilePic: state.profileImage,
+
         workToolsImages: state.toolsImages,
+
         previousWorkImages: state.workImages,
+
         workCertificate: null,
+
         ninImage: state.ninImage,
+
         isVerified: false,
+
         isSuspended: false,
+
       );
+
 
       await firestore.saveTechnician(tech);
 
-      ref.read(authProvider.notifier).setUser(tech);
+
+      ref
+          .read(authProvider.notifier)
+          .setUser(tech);
+
+
 
       await clearDraft();
 
-      state = state.copyWith(isLoading: false);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => TechnicianMainScreen()),
+
+      state = state.copyWith(
+        isLoading: false,
       );
+
+
+
+      _showWelcomeDialog(context);
+
+
+
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+
+
+      state = state.copyWith(
+        isLoading: false,
+      );
+
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+
+        SnackBar(
+          content: Text(
+            "Error: $e",
+          ),
+        ),
+
       );
+
     }
+  }
+
+
+
+
+  void _showWelcomeDialog(BuildContext context) {
+
+    showDialog(
+
+      context: context,
+
+      barrierDismissible: false,
+
+
+      builder: (context) {
+
+
+        return AlertDialog(
+
+
+          shape: RoundedRectangleBorder(
+
+            borderRadius:
+            BorderRadius.circular(20),
+
+          ),
+
+
+
+          title: const Row(
+
+            children: [
+
+              Icon(
+
+                Icons.celebration,
+
+                color: Colors.blue,
+
+              ),
+
+
+              SizedBox(width: 10),
+
+
+              Text(
+                "Welcome to KwikPro",
+              ),
+
+            ],
+
+          ),
+
+
+
+
+          content: const Text(
+
+            "Congratulations! Your technician profile has been created.\n\n"
+
+                "Your account is currently offline. "
+
+                "Please change your availability status when you are ready to receive jobs.\n\n"
+
+                "Your profile will remain under verification until our team approves your documents.",
+
+          ),
+
+
+
+
+          actions: [
+
+
+            SizedBox(
+
+              width: double.infinity,
+
+
+              child: ElevatedButton(
+
+
+                style:
+                ElevatedButton.styleFrom(
+
+                  backgroundColor:
+                  Colors.blue,
+
+
+                  shape:
+                  RoundedRectangleBorder(
+
+                    borderRadius:
+                    BorderRadius.circular(12),
+
+                  ),
+
+                ),
+
+
+
+
+                onPressed: () {
+
+
+                  Navigator.pop(context);
+
+
+
+                  Navigator.pushReplacement(
+
+                    context,
+
+                    MaterialPageRoute(
+
+                      builder: (_) =>
+                          TechnicianMainScreen(),
+
+                    ),
+
+                  );
+
+
+                },
+
+
+
+
+                child: const Text(
+
+                  "Continue",
+
+                  style: TextStyle(
+
+                    color: Colors.white,
+
+                  ),
+
+                ),
+
+
+              ),
+
+            ),
+
+
+          ],
+
+        );
+
+      },
+
+    );
+
   }
 }

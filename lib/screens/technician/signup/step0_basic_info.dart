@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../providers/technician_signup_controller.dart';
+import '../../../theme/app_colors.dart';
+import '../../../widgets/app_primary_button.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../widgets/onboarding_header.dart';
 
 class Step0BasicInfo extends ConsumerStatefulWidget {
   const Step0BasicInfo({super.key});
 
   @override
-  ConsumerState<Step0BasicInfo> createState() => _Step0BasicInfoState();
+  ConsumerState<Step0BasicInfo> createState() =>
+      _Step0BasicInfoState();
 }
 
-class _Step0BasicInfoState extends ConsumerState<Step0BasicInfo> {
+class _Step0BasicInfoState
+    extends ConsumerState<Step0BasicInfo> {
   late TextEditingController nameController;
 
   final services = const [
@@ -22,7 +29,7 @@ class _Step0BasicInfoState extends ConsumerState<Step0BasicInfo> {
     "Fridge Repairer",
   ];
 
-  static Map<String, List<String>> serviceSkills = {
+  static final Map<String, List<String>> serviceSkills = {
     "Car Mechanic": [
       "Battery Services",
       "Car Rewire",
@@ -31,9 +38,7 @@ class _Step0BasicInfoState extends ConsumerState<Step0BasicInfo> {
       "German Car",
       "American Car",
       "Japanese Car",
-
     ],
-
     "Electrician": [
       "Wiring",
       "Socket Fixing",
@@ -59,17 +64,16 @@ class _Step0BasicInfoState extends ConsumerState<Step0BasicInfo> {
       "Carburetor",
     ],
     "Fridge Repairer": [
-      "Freezer Repair"
+      "Freezer Repair",
       "Gas Filling",
       "Refrigerator Repair",
-
     ],
     "Painter": [
       "Interior Painting",
       "Exterior Painting",
       "Wall Screeding",
-      "Wallpaper installation",
-    ]
+      "Wallpaper Installation",
+    ],
   };
 
   @override
@@ -77,7 +81,8 @@ class _Step0BasicInfoState extends ConsumerState<Step0BasicInfo> {
     super.initState();
 
     final state = ref.read(technicianSignupController);
-    nameController = TextEditingController(text: state.name);
+    nameController =
+        TextEditingController(text: state.name ?? '');
   }
 
   @override
@@ -93,115 +98,152 @@ class _Step0BasicInfoState extends ConsumerState<Step0BasicInfo> {
     final selectedService =
     services.contains(state.service) ? state.service : null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Progress Bar
-        LinearProgressIndicator(
-          value: state.step / 5,
-          minHeight: 6,
-          color: Colors.green,
-          backgroundColor: Colors.grey.shade300,
-        ),
-        const SizedBox(height: 20),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
 
-        // Name
-        TextField(
-          controller: nameController,
-          decoration: const InputDecoration(
-            labelText: "Full Name",
-            border: OutlineInputBorder(),
+          const OnboardingHeader(
+            title: Text("Tell Us About Yourself"),
+            subtitle:
+            "Choose your profession and the skills you specialize in.",
           ),
-          onChanged: (value) {
-            ref
-                .read(technicianSignupController.notifier)
-                .setName(value);
-          },
-        ),
 
-        const SizedBox(height: 20),
+          const SizedBox(height: 30),
 
-        // Service dropdown
-        DropdownButtonFormField<String>(
-          value: selectedService,
-          items: services
-              .map((s) => DropdownMenuItem(
-            value: s,
-            child: Text(s),
-          ))
-              .toList(),
-          onChanged: (val) {
-            if (val != null) {
+          AppTextField(
+            controller: nameController,
+            label: "Full Name",
+            hint: "John Doe",
+            icon: Icons.person_outline,
+            onChanged: (value) {
               ref
                   .read(technicianSignupController.notifier)
-                  .setService(val);
-            }
-          },
-          decoration: const InputDecoration(
-            labelText: "Select Service",
-            border: OutlineInputBorder(),
+                  .setName(value);
+            },
           ),
-        ),
 
-        const SizedBox(height: 20),
+          const SizedBox(height: 22),
 
-        // Skills
-        if ((state.service ?? '').isNotEmpty &&
-            serviceSkills.containsKey(state.service))
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Select your skills",
-                style: TextStyle(fontWeight: FontWeight.bold),
+          const Text(
+            "Service Category",
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Container(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.border,
               ),
-              const SizedBox(height: 10),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedService,
+                isExpanded: true,
+                hint: const Text("Select your service"),
+                items: services
+                    .map(
+                      (service) => DropdownMenuItem(
+                    value: service,
+                    child: Text(service),
+                  ),
+                )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref
+                        .read(
+                      technicianSignupController
+                          .notifier,
+                    )
+                        .setService(value);
+                  }
+                },
+              ),
+            ),
+          ),
 
-              ...serviceSkills[state.service!]!.map((skill) {
-                final selectedSkills = state.skills;
+          if ((state.service ?? '').isNotEmpty &&
+              serviceSkills.containsKey(state.service)) ...[
+            const SizedBox(height: 28),
 
-                return CheckboxListTile(
-                  title: Text(skill),
-                  value: selectedSkills.contains(skill),
-                  onChanged: (value) {
-                    final updatedSkills = [...selectedSkills];
+            const Text(
+              "Skills",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
 
-                    if (value == true) {
-                      if (!updatedSkills.contains(skill)) {
-                        updatedSkills.add(skill);
-                      }
+            const SizedBox(height: 10),
+
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children:
+              serviceSkills[state.service]!.map((skill) {
+                final selected =
+                state.skills.contains(skill);
+
+                return FilterChip(
+                  label: Text(skill),
+                  selected: selected,
+                  selectedColor:
+                  AppColors.primary.withOpacity(.15),
+                  checkmarkColor:
+                  AppColors.primary,
+                  onSelected: (value) {
+                    final updated =
+                    [...state.skills];
+
+                    if (value) {
+                      updated.add(skill);
                     } else {
-                      updatedSkills.remove(skill);
+                      updated.remove(skill);
                     }
 
                     ref
-                        .read(technicianSignupController.notifier)
-                        .setSkills(updatedSkills);
+                        .read(
+                      technicianSignupController
+                          .notifier,
+                    )
+                        .setSkills(updated);
                   },
                 );
               }).toList(),
-            ],
-          ),
+            ),
+          ],
 
-        const SizedBox(height: 20),
+          const SizedBox(height: 40),
 
-        // Continue button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
+          AppPrimaryButton(
+            text: "Continue",
             onPressed: () {
-              final notifier =
-              ref.read(technicianSignupController.notifier);
+              final notifier = ref.read(
+                technicianSignupController.notifier,
+              );
 
-              notifier.setName(nameController.text);
+              notifier.setName(
+                nameController.text.trim(),
+              );
+
               notifier.setService(selectedService);
 
               notifier.nextStep();
             },
-            child: const Text("Continue"),
           ),
-        ),
-      ],
+
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 }

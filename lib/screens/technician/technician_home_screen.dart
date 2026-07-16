@@ -390,16 +390,28 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              name,
+              "Hello,",
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: Colors.grey.shade600,
               ),
             ),
+
+            const SizedBox(height: 4),
+
+            Text(
+              " $name",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+              ),
+            ),
+
 
             SizedBox(width: 4),
 

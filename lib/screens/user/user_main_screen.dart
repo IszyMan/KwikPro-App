@@ -35,72 +35,92 @@ class _UserMainScreenState extends State<UserMainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
-      bottomNavigationBar: SizedBox(
-        height: 85,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // 🔵 BACKGROUND NAV BAR
-            Container(
-              height: 65,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(35),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(Icons.home, "Home", 0),
-                  _buildNavItem(Icons.history, "Jobs", 1),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: 0,
+            right: 0,
+            bottom: 10, // brings the navbar up
+          ),
+          child: SizedBox(
+            height: 90,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
 
-                  const SizedBox(width: 50), // SPACE FOR FLOATING BUTTON
-
-                  _buildNavItem(Icons.support_agent, "Support", 3),
-                  _buildNavItem(Icons.person, "Profile", 4),
-                ],
-              ),
-            ),
-
-            // 🔥 FLOATING CENTER BUTTON (MTN STYLE)
-            Positioned(
-              top: -25,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: () => _onItemTapped(2),
+                // NAV BAR
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: 20,
                   child: Container(
-                    width: 65,
                     height: 65,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.blueAccent,
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(35),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.blueAccent.withOpacity(0.4),
-                          blurRadius: 15,
-                          offset: const Offset(0, 6),
+                          color: Colors.black.withOpacity(.12),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.search,
-                      color: Colors.white,
-                      size: 30,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+
+                        _buildNavItem(Icons.home, "Home", 0),
+
+                        _buildNavItem(Icons.history, "Jobs", 1),
+
+                        const SizedBox(width: 50),
+
+                        _buildNavItem(Icons.support_agent, "Support", 3),
+
+                        _buildNavItem(Icons.person, "Profile", 4),
+
+                      ],
                     ),
                   ),
                 ),
-              ),
+
+                // CENTER BUTTON
+                Positioned(
+                  top: -5,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () => _onItemTapped(2),
+                      child: Container(
+                        width: 65,
+                        height: 65,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.blueAccent,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blueAccent.withOpacity(.4),
+                              blurRadius: 15,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.search,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

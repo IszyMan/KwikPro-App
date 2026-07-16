@@ -7,6 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../providers/technician_signup_controller.dart';
+import '../../../widgets/app_primary_button.dart';
+import '../../../widgets/onboarding_header.dart';
+import '../../../widgets/upload_image_card.dart';
 import '../../user/privacy_policy.dart';
 import '../../user/terms_and_conditions.dart';
 
@@ -18,224 +21,234 @@ class Step4Verification extends ConsumerStatefulWidget {
       _Step4VerificationState();
 }
 
-class _Step4VerificationState extends ConsumerState<Step4Verification> {
-  static const cloudName = 'dcresvgii';
-  static const uploadPreset = 'unsigned_preset';
+class _Step4VerificationState
+    extends ConsumerState<Step4Verification> {
+  static const cloudName = "dcresvgii";
+  static const uploadPreset = "unsigned_preset";
 
   bool acceptedLegal = false;
 
   Future<String?> uploadToCloudinary(XFile file) async {
     final uri = Uri.parse(
-      'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+      "https://api.cloudinary.com/v1_1/$cloudName/image/upload",
     );
 
     final bytes = await file.readAsBytes();
 
-    final request = http.MultipartRequest('POST', uri)
-      ..fields['upload_preset'] = uploadPreset
+    final request = http.MultipartRequest("POST", uri)
+      ..fields["upload_preset"] = uploadPreset
       ..files.add(
         http.MultipartFile.fromBytes(
-          'file',
+          "file",
           bytes,
           filename: file.name,
         ),
       );
 
     final response = await request.send();
-    final resBody = await response.stream.bytesToString();
+    final body = await response.stream.bytesToString();
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(resBody);
-      return data['secure_url'];
+      return jsonDecode(body)["secure_url"];
     }
 
-    debugPrint("Upload failed: $resBody");
+    debugPrint(body);
     return null;
   }
 
   Future<void> pickAndUploadNin() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
+
+    final picked =
+    await picker.pickImage(source: ImageSource.gallery);
 
     if (picked == null) return;
 
-    final notifier = ref.read(technicianSignupController.notifier);
+    final notifier =
+    ref.read(technicianSignupController.notifier);
 
-    // STEP 1: local preview (same style as Step 3)
-    notifier.addImage(type: "nin", path: picked.path);
+    notifier.addImage(
+      type: "nin",
+      path: picked.path,
+    );
 
-    // STEP 2: upload
     final url = await uploadToCloudinary(picked);
 
-    // STEP 3: replace with cloud URL
     if (url != null) {
-      notifier.addImage(type: "nin", path: url);
+      notifier.addImage(
+        type: "nin",
+        path: url,
+      );
     }
   }
 
   ImageProvider getImage(String path) {
-    return path.startsWith('http')
-        ? NetworkImage(path)
-        : FileImage(File(path)) as ImageProvider;
+    if (path.startsWith("http")) {
+      return NetworkImage(path);
+    }
+
+    return FileImage(File(path));
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(technicianSignupController);
-    final notifier = ref.read(technicianSignupController.notifier);
+
+    final notifier =
+    ref.read(technicianSignupController.notifier);
 
     final ninImage = state.ninImage;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Upload NIN / ID")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
 
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const OnboardingHeader(
+            title: Text("Final Verification"),
+            subtitle:
+            "Upload a valid government ID to verify your identity. This helps customers trust your profile.",
+          ),
+
+          const SizedBox(height: 28),
+
+          UploadImageCard(
+            title: "Government ID / NIN",
+            subtitle: "Upload your NIN Slip or valid ID",
+            onTap: pickAndUploadNin,
+          ),
+
+          if (ninImage != null && ninImage.isNotEmpty) ...[
+
+            const SizedBox(height: 18),
+
+            Stack(
               children: [
-                const Text(
-                  "NIN / ID Card",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image(
+                    image: getImage(ninImage),
+                    height: 140,
+                    width: 140,
+                    fit: BoxFit.cover,
                   ),
                 ),
 
-                const SizedBox(height: 12),
-
-                SizedBox(
-                  height: 120,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: ninImage == null || ninImage.isEmpty ? 1 : 1,
-                    itemBuilder: (context, index) {
-                      /// ADD BUTTON (ONLY WHEN EMPTY)
-                      if (ninImage == null || ninImage.isEmpty) {
-                        return GestureDetector(
-                          onTap: pickAndUploadNin,
-                          child: Container(
-                            width: 120,
-                            margin: const EdgeInsets.only(right: 10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.badge),
-                                SizedBox(height: 8),
-                                Text("Add NIN"),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      /// IMAGE CARD (LIKE STEP 3)
-                      return Stack(
-                        children: [
-                          Container(
-                            width: 120,
-                            margin: const EdgeInsets.only(right: 10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              image: DecorationImage(
-                                image: getImage(ninImage),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-
-                          Positioned(
-                            top: 6,
-                            right: 16,
-                            child: GestureDetector(
-                              onTap: () {
-                                notifier.addImage(
-                                  type: "nin",
-                                  path: "",
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(5),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 15,
-                                ),
-                              ),
-                            ),
-                          )
-                        ],
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: InkWell(
+                    onTap: () {
+                      notifier.addImage(
+                        type: "nin",
+                        path: "",
                       );
                     },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.black87,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
+          ],
 
-            const SizedBox(height: 25),
+          const SizedBox(height: 30),
 
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
               children: [
+
                 Checkbox(
                   value: acceptedLegal,
-                  onChanged: (value) {
+                  onChanged: (v) {
                     setState(() {
-                      acceptedLegal = value ?? false;
+                      acceptedLegal = v ?? false;
                     });
                   },
                 ),
 
                 Expanded(
-                  child: Wrap(
+                  child: Column(
+                    crossAxisAlignment:
+                    CrossAxisAlignment.start,
                     children: [
-                      const Text("By continuing, you agree to KwikPro's "),
 
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const PrivacyPolicy(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Privacy Policy",
-                          style: TextStyle(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
+                      Wrap(
+                        children: [
+
+                          const Text(
+                            "I agree to KwikPro's ",
                           ),
-                        ),
+
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                  const PrivacyPolicy(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              "Privacy Policy",
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight:
+                                FontWeight.w600,
+                              ),
+                            ),
+                          ),
+
+                          const Text(" and "),
+
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                  const TermsAndConditions(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              "Terms & Conditions",
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight:
+                                FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
 
-                      const Text(" and "),
+                      const SizedBox(height: 10),
 
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TermsAndConditions(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Terms & Conditions",
-                          style: TextStyle(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
-                          ),
+                      Text(
+                        "Your documents are encrypted and used only for verification. They are never displayed publicly.",
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -243,29 +256,24 @@ class _Step4VerificationState extends ConsumerState<Step4Verification> {
                 ),
               ],
             ),
+          ),
 
-            const Text(
-              "We respect your privacy. Your data is used only to connect you with nearby technicians.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+          const SizedBox(height: 36),
 
-            const Spacer(),
+          AppPrimaryButton(
+            text: "Finish Registration",
+            loading: state.isLoading,
+            onPressed: acceptedLegal &&
+                ninImage != null &&
+                ninImage.isNotEmpty
+                ? () {
+              notifier.submit(context, ref);
+            }
+                : null,
+          ),
 
-            const SizedBox(height: 20),
-
-
-            ElevatedButton(
-              onPressed: (acceptedLegal &&
-                  ninImage != null &&
-                  ninImage.isNotEmpty)
-                  ? () => notifier.submit(context, ref)
-                  : null,
-              child: state.isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text("Finish"),
-            ),
-          ],
-        ),
+          const SizedBox(height: 30),
+        ],
       ),
     );
   }

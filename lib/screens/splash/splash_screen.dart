@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kwikpro/screens/admin/admin_dashboard_screen.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/location_service.dart';
 import '../onboarding/account_type_screen.dart';
 import '../onboarding/welcome_screen.dart';
 import '../technician/technician_main_screen.dart';
 import '../user/user_main_screen.dart';
 import '../user/user_signup_screen.dart';
 import '../technician/signup/technician_signup_screen.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/app_logo.dart';
 
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -155,24 +156,45 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.build_circle_outlined, size: 100, color: Colors.blue),
-            SizedBox(height: 32),
-            Text(
+            const AppLogo(size: 100),
+
+            const SizedBox(height: 28),
+
+            const Text(
               "KwikPro",
               style: TextStyle(
-                fontSize: 48,
+                fontSize: 42,
                 fontWeight: FontWeight.bold,
-                color: Colors.blue,
+                color: AppColors.primary,
+                letterSpacing: 0.5,
               ),
             ),
-            SizedBox(height: 12),
-            Text(
-              "Connecting Users to Nearby Repair Professionals",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18),
+
+            const SizedBox(height: 12),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                "Connecting Users to Nearby Repair Professionals",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 17,
+                  color: AppColors.textLight,
+                  height: 1.5,
+                ),
+              ),
             ),
-            SizedBox(height: 48),
-            CircularProgressIndicator(),
+
+            const SizedBox(height: 48),
+
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: AppColors.primary,
+              ),
+            ),
           ],
         ),
       ),
