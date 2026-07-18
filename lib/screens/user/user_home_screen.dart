@@ -16,7 +16,6 @@ import 'package:kwikpro/screens/user/user_job_history_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../../widgets/showcase_feed_widget.dart';
 
 class UserHomeScreen extends ConsumerStatefulWidget {
   const UserHomeScreen({super.key});
@@ -642,24 +641,7 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
           const SizedBox(height: 20),
 
-          // ================= SHOWCASE TITLE =================
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              "Technician Showcases",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
 
-          const SizedBox(height: 10),
-
-          // ================= SHOWCASE FEED =================
-          const ShowcaseFeedWidget(),
-
-          const SizedBox(height: 20),
         ],
       ),
     );

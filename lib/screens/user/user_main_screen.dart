@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:kwikpro/screens/user/search_technicians_screen.dart';
-import 'package:kwikpro/screens/user/user_contacts.dart';
 import 'package:kwikpro/screens/user/user_job_history_screen.dart';
 import 'package:kwikpro/screens/user/user_profile_screen.dart';
-import '../admin/customer_support.dart';
+import '../../core/colors.dart';
+import '../chat/chats_screen.dart';
+import '../showcase/showcase_screen.dart';
 import 'user_home_screen.dart';
 
 class UserMainScreen extends StatefulWidget {
@@ -14,13 +16,13 @@ class UserMainScreen extends StatefulWidget {
 }
 
 class _UserMainScreenState extends State<UserMainScreen> {
-  int _selectedIndex = 2;
+  int _selectedIndex = 0;
 
   final List<Widget> _screens = [
     UserHomeScreen(),
     UserJobHistoryScreen(),
-    SearchTechnicianScreen(),
-    CustomerSupport(),
+    ShowcaseScreen(),
+    ChatsScreen(),
     UserProfileScreen(),
 
   ];
@@ -77,7 +79,7 @@ class _UserMainScreenState extends State<UserMainScreen> {
 
                         const SizedBox(width: 50),
 
-                        _buildNavItem(Icons.support_agent, "Support", 3),
+                        _buildChatNavItem(),
 
                         _buildNavItem(Icons.person, "Profile", 4),
 
@@ -99,17 +101,17 @@ class _UserMainScreenState extends State<UserMainScreen> {
                         height: 65,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.blueAccent,
+                          color: AppColors.primary,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.blueAccent.withOpacity(.4),
+                              color: AppColors.primary.withOpacity(.35),
                               blurRadius: 15,
                               offset: const Offset(0, 6),
                             ),
                           ],
                         ),
                         child: const Icon(
-                          Icons.search,
+                          Icons.collections_rounded,
                           color: Colors.white,
                           size: 30,
                         ),
@@ -151,6 +153,109 @@ class _UserMainScreenState extends State<UserMainScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildChatNavItem() {
+    final myId = FirebaseAuth.instance.currentUser!.uid;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection("chats")
+          .where("participants", arrayContains: myId)
+          .snapshots(),
+      builder: (context, chatSnapshot) {
+        if (!chatSnapshot.hasData) {
+          return _buildNavItem(Icons.chat_bubble_outline, "Chats", 3);
+        }
+
+        final chats = chatSnapshot.data!.docs;
+
+        if (chats.isEmpty) {
+          return _buildNavItem(Icons.chat_bubble_outline, "Chats", 3);
+        }
+
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collectionGroup("messages")
+              .where("receiverId", isEqualTo: myId)
+              .where("read", isEqualTo: false)
+              .snapshots(),
+          builder: (context, unreadSnapshot) {
+            final unreadCount =
+                unreadSnapshot.data?.docs.length ?? 0;
+
+            final isSelected = _selectedIndex == 3;
+
+            return GestureDetector(
+              onTap: () => _onItemTapped(3),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.grey,
+                        size: isSelected ? 28 : 24,
+                      ),
+
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: -8,
+                          top: -6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                unreadCount > 99
+                                    ? "99+"
+                                    : "$unreadCount",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 3),
+
+                  Text(
+                    "Chats",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isSelected
+                          ? AppColors.primary
+                          : Colors.grey,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

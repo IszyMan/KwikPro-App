@@ -392,7 +392,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
                 ),
               );
             },
-            child: const Text("View Profile"),
+            child: const Text("Contact Technician"),
           ),
         ),
       ],

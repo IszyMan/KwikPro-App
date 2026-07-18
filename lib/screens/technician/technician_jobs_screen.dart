@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/notification_service.dart';
-import '../chat/chat_screens.dart';
+import '../chat/conversation_screen.dart';
 import '../chat/chat_service.dart';
 import 'completed_jobs_screen.dart';
 
@@ -297,7 +297,7 @@ class TechnicianJobsScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => ChatScreen(
+                                  builder: (_) => ConversationScreen(
                                     requestId: doc.id,
                                     otherUserName: data['userName'] ?? "Customer",
                                     otherUserId: data['userId'],
@@ -732,19 +732,32 @@ class TechnicianJobsScreen extends StatelessWidget {
     print("techId: $technicianId");
 
     // ================= CREATE CHAT ROOM (ONLY ONCE) =================
-    if (status == "accepted" && data['chatCreated'] != true) {
+    if ((status == "accepted" || status == "appointmentAccepted") &&
+        data['chatCreated'] != true) {
       await FirebaseFirestore.instance
           .collection('chats')
           .doc(id)
           .set({
-        "participants": [userId, technicianId],
-        "lastMessage": "",
-        "updatedAt": FieldValue.serverTimestamp(),
+        // Chat info
         "requestId": id,
-        "chatCreated": true,
+        "participants": [userId, technicianId],
+        "createdAt": FieldValue.serverTimestamp(),
+        "updatedAt": FieldValue.serverTimestamp(),
+        "lastMessage": "",
+        "lastSenderId": null,
+        "lastReceiverId": null,
+
+        // User
+        "userId": userId,
+        "userName": data["userName"] ?? "Customer",
+        "userImage": data["userImage"] ?? "",
+
+        // Technician
+        "technicianId": technicianId,
+        "technicianName": data["technicianName"] ?? "Technician",
+        "technicianImage": data["technicianImage"] ?? "",
       }, SetOptions(merge: true));
 
-      // mark chat created
       await FirebaseFirestore.instance
           .collection('requests')
           .doc(id)

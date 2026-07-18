@@ -585,6 +585,22 @@ class _ViewTechnicianProfileScreenState
     );
   }
 
+  Future<Map<String, dynamic>> _getCurrentUserInfo() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    final data = doc.data() ?? {};
+
+    return {
+      "userName": data["name"] ?? "Customer",
+      "userImage": data["profilePic"] ?? "",
+    };
+  }
+
   Future<void> _sendRequest(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -592,6 +608,10 @@ class _ViewTechnicianProfileScreenState
         "${user?.uid}_${widget.technician.uid}";
 
     if (user == null) return;
+
+    final userInfo = await _getCurrentUserInfo();
+
+
 
 
 
@@ -618,6 +638,9 @@ class _ViewTechnicianProfileScreenState
     await FirebaseFirestore.instance.collection('requests').add({
 
       "userId": user.uid,
+      "userName": userInfo["userName"],
+      "userImage": userInfo["userImage"],
+
       "technicianId": widget.technician.uid,
       "type": "instant",
       "technicianName": widget.technician.name,
@@ -684,6 +707,8 @@ class _ViewTechnicianProfileScreenState
 
     if (user == null) return;
 
+    final userInfo = await _getCurrentUserInfo();
+
     final pickedDate = await showDatePicker(
       context: context,
       firstDate: DateTime.now(),
@@ -742,6 +767,9 @@ class _ViewTechnicianProfileScreenState
         .collection('requests')
         .add({
       "userId": user.uid,
+      "userName": userInfo["userName"],
+      "userImage": userInfo["userImage"],
+
       "technicianId": widget.technician.uid,
 
       "type": "appointment",
@@ -918,7 +946,7 @@ class _ViewTechnicianProfileScreenState
           child: _actionChipButton(
 
             icon: Icons.work,
-            label: "View Job Progress",
+            label: "Connect With Technician",
             color: Colors.green,
             onTap: () => _openActiveJob(_requestId!),
           ),

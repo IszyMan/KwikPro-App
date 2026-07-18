@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:kwikpro/models/technician_model.dart';
 import 'package:kwikpro/screens/user/rating_review_screen.dart';
 
-import '../chat/chat_screens.dart';
+import '../chat/conversation_screen.dart';
 import '../chat/chat_service.dart';
 
 class ActiveJobScreen extends StatefulWidget {
@@ -140,7 +140,7 @@ class _ActiveJobScreenState extends State<ActiveJobScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChatScreen(
+                        builder: (_) => ConversationScreen(
                           requestId: widget.requestId,
                           otherUserId: widget.technician.uid,
                           otherUserName: widget.technician.name,
