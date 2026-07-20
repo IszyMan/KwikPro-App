@@ -6,6 +6,7 @@ class UserModel {
   final String? currentAddress;
   final double? lat;
   final double? lng;
+  final Map<String, int> preferredServices;
 
   UserModel({
     required this.uid,
@@ -15,6 +16,7 @@ class UserModel {
     this.currentAddress,
     this.lat,
     this.lng,
+    this.preferredServices = const {},
   });
 
   // Convert to Map (for Firestore)
@@ -27,6 +29,7 @@ class UserModel {
       'currentAddress': currentAddress,
       'lat': lat,
       'lng': lng,
+      'preferredServices': preferredServices,
     };
   }
 
@@ -40,6 +43,13 @@ class UserModel {
       currentAddress: map['currentAddress'],
       lat: (map['lat'] as num?)?.toDouble(),
       lng: (map['lng'] as num?)?.toDouble(),
+      preferredServices:
+      (map['preferredServices'] as Map<String, dynamic>?)
+          ?.map(
+            (key, value) =>
+            MapEntry(key, (value as num).toInt()),
+      ) ??
+          {},
     );
   }
 }

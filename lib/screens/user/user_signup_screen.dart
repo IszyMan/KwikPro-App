@@ -205,6 +205,7 @@ class _UserSignupScreenState
       'lat': pos?.latitude,
       'lng': pos?.longitude,
       'role': 'user',
+      'preferredServices': <String, int>{},
     };
 
     await FirebaseFirestore.instance

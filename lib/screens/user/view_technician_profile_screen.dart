@@ -881,7 +881,7 @@ class _ViewTechnicianProfileScreenState
           height: 54,
           child: _actionChipButton(
             icon: Icons.flash_on,
-            label: "Request Now",
+            label: "Book Now",
             color: Colors.orange,
             onTap: () => _sendRequest(context),
           ),

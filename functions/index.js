@@ -7,7 +7,14 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
+ const axios = require("axios");
+ const {onCall} = require("firebase-functions/v2/https");
+ const {defineSecret} = require("firebase-functions/params");
+
+ const googleApiKey = defineSecret("GOOGLE_MAPS_API_KEY");
+
 const {setGlobalOptions} = require("firebase-functions");
+
 //const {onRequest} = require("firebase-functions/https");
 //const logger = require("firebase-functions/logger");
 
@@ -85,3 +92,41 @@ exports.notifyTechnicianOnNewRequest = functions.firestore
 
     return null;
   });
+
+
+  exports.reverseGeocode = onCall(
+    {
+      secrets: [googleApiKey],
+    },
+    async (request) => {
+      const {lat, lng} = request.data;
+
+      if (lat == null || lng == null) {
+        throw new Error("Latitude and longitude are required.");
+      }
+
+      const apiKey = googleApiKey.value();
+
+      const url =
+        "https://maps.googleapis.com/maps/api/geocode/json";
+
+      const response = await axios.get(url, {
+        params: {
+          latlng: `${lat},${lng}`,
+          key: apiKey,
+        },
+      });
+
+      const results = response.data.results;
+
+      if (!results || results.length === 0) {
+        return {
+          address: "Unknown location",
+        };
+      }
+
+      return {
+        address: results[0].formatted_address,
+      };
+    }
+  );

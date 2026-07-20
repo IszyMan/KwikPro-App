@@ -150,19 +150,11 @@ class TechnicianSignupScreen extends ConsumerWidget {
 
 
                 children: [
-
-
                   Row(
-
                     children: [
-
-
                       if(state.step > 0)
-
                         InkWell(
-
                           onTap: (){
-
                             ref
                                 .read(
                               technicianSignupController

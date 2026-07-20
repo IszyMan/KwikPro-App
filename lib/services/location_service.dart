@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'dart:math';
+
+import 'google_maps_service.dart';
 
 class LocationService {
   static Future<Map<String, dynamic>?> getCurrentLocation() async {
@@ -30,7 +33,11 @@ class LocationService {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      final address = await reverseGeocode(
+      debugPrint(
+        "GPS: ${position.latitude}, ${position.longitude}",
+      );
+
+      final address = await GoogleMapsService.reverseGeocode(
         position.latitude,
         position.longitude,
       );
@@ -135,5 +142,33 @@ class LocationService {
       );
       return "Unknown location";
     }
+  }
+
+
+  static double calculateDistance(
+      double startLat,
+      double startLng,
+      double endLat,
+      double endLng,
+      ) {
+    const earthRadius = 6371;
+
+    final dLat = _degToRad(endLat - startLat);
+    final dLng = _degToRad(endLng - startLng);
+
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
+            cos(_degToRad(startLat)) *
+                cos(_degToRad(endLat)) *
+                sin(dLng / 2) *
+                sin(dLng / 2);
+
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadius * c;
+  }
+
+  static double _degToRad(double deg) {
+    return deg * pi / 180;
   }
 }

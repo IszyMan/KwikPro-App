@@ -192,7 +192,7 @@ class TechnicianSignupController
 
         lat: location?['lat'],
 
-        long: location?['lng'],
+        lng: location?['lng'],
 
         profilePic: state.profileImage,
 
@@ -212,8 +212,6 @@ class TechnicianSignupController
 
 
       await firestore.saveTechnician(tech);
-
-
       ref
           .read(authProvider.notifier)
           .setUser(tech);

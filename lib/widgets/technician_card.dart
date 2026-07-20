@@ -215,7 +215,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
     if (widget.userLat == null ||
         widget.userLng == null ||
         widget.technician.lat == null ||
-        widget.technician.long == null) {
+        widget.technician.lng == null) {
       return _DistanceData(distance: 0, eta: "--");
     }
 
@@ -223,7 +223,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
       widget.userLat!,
       widget.userLng!,
       widget.technician.lat!,
-      widget.technician.long!,
+      widget.technician.lng!,
     ) /
         1000;
 

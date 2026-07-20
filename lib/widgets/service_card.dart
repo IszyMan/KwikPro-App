@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../screens/user/service_job_request_screen.dart';
-import '../screens/user/service_technician_screen.dart';
 
 class ServiceCard extends StatelessWidget {
   final String service;
@@ -9,35 +8,49 @@ class ServiceCard extends StatelessWidget {
   final double? initialLat;
   final double? initialLng;
 
-  const ServiceCard({required this.service, this.initialLat, this.initialLng, this.initialLocation});
+  const ServiceCard({
+    super.key,
+    required this.service,
+    this.initialLat,
+    this.initialLng,
+    this.initialLocation,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final scale =
+    (MediaQuery.of(context).size.height / 850).clamp(0.85, 1.0);
+
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ServiceJobRequestScreen(
-                service: service,
-                initialLocation: initialLocation,
-                initialLat: initialLat,
-                initialLng: initialLng,
-              ),
+      borderRadius: BorderRadius.circular(14),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ServiceJobRequestScreen(
+              service: service,
+              initialLocation: initialLocation,
+              initialLat: initialLat,
+              initialLng: initialLng,
             ),
-          );
-        },
+          ),
+        );
+      },
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.symmetric(
+          horizontal: 12 * scale,
+          vertical: 10 * scale,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: Colors.grey.shade200,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 6,
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
               offset: const Offset(0, 3),
             ),
           ],
@@ -45,23 +58,31 @@ class ServiceCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-
-            // 🔹 ICON
-            Icon(
-              _getServiceIcon(service),
-              size: 32,
-              color: Colors.blueGrey,
+            Container(
+              width: 42 * scale,
+              height: 42 * scale,
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _getServiceIcon(service),
+                color: Colors.blue.shade700,
+                size: 22 * scale,
+              ),
             ),
 
-            const SizedBox(height: 10),
+            SizedBox(height: 8 * scale),
 
-            // 🔹 TEXT
             Text(
-              '${service}s ',
+              service,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13 * scale,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
               ),
             ),
           ],
@@ -88,5 +109,4 @@ class ServiceCard extends StatelessWidget {
         return Icons.miscellaneous_services;
     }
   }
-
 }

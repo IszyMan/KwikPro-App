@@ -22,27 +22,33 @@ class AppOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Scales between 85% and 100%
+    final scale = (screenHeight / 850).clamp(0.85, 1.0);
+
     return Material(
       color: Colors.white,
       elevation: 3,
       shadowColor: Colors.black12,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(20 * scale),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20 * scale),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(22),
+          padding: EdgeInsets.all(20 * scale),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20 * scale),
             border: Border.all(
               color: AppColors.border,
             ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 68,
-                height: 68,
+                width: 64 * scale,
+                height: 64 * scale,
                 decoration: BoxDecoration(
                   color: background,
                   shape: BoxShape.circle,
@@ -50,51 +56,56 @@ class AppOptionCard extends StatelessWidget {
                 child: Icon(
                   icon,
                   color: iconColor,
-                  size: 34,
+                  size: 32 * scale,
                 ),
               ),
 
-              const SizedBox(width: 18),
+              SizedBox(width: 16 * scale),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 20,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 19 * scale,
                         fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
                       ),
                     ),
 
-                    const SizedBox(height: 8),
+                    SizedBox(height: 6 * scale),
 
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         color: AppColors.textLight,
-                        height: 1.45,
-                        fontSize: 15,
+                        fontSize: 14 * scale,
+                        height: 1.35,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(width: 10),
+              SizedBox(width: 10 * scale),
 
               Container(
-                width: 34,
-                height: 34,
+                width: 32 * scale,
+                height: 32 * scale,
                 decoration: const BoxDecoration(
                   color: AppColors.lightBlue,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_forward_ios_rounded,
-                  size: 16,
+                  size: 15 * scale,
                   color: AppColors.primary,
                 ),
               ),

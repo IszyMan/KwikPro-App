@@ -131,6 +131,23 @@ class _RatingReviewScreenState extends State<RatingReviewScreen> {
       });
 
 
+      // 3. Add to Recently Booked
+      await FirebaseFirestore.instance
+          .collection('recent_bookings')
+          .doc(widget.requestId)
+          .set({
+        "technicianId": widget.technician.uid,
+        "technicianName": widget.technician.name,
+        "technicianImage": widget.technician.profilePic,
+        "service": widget.technician.service,
+        "avgServiceRating": widget.technician.avgServiceRating,
+        "completedJobs": widget.technician.completedJobs,
+        "isVerified": widget.technician.isVerified,
+        "status": "completed",
+        "completedAt": FieldValue.serverTimestamp(),
+      });
+
+
       await NotificationService.send(
         recipientId: widget.technician.uid,
         title: "New Review",

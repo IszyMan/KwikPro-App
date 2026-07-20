@@ -31,6 +31,9 @@ class TechnicianSearchResultsScreen extends StatefulWidget {
 
 class _TechnicianSearchResultsScreenState
     extends State<TechnicianSearchResultsScreen> {
+
+  double _currentRadius = 20;
+
   @override
   Widget build(BuildContext context) {
 
@@ -59,32 +62,63 @@ class _TechnicianSearchResultsScreenState
 
           final docs = snapshot.data!.docs;
 
-          final nearby = docs.map((d) {
-            return TechnicianModel.fromMap(
-              d.data() as Map<String, dynamic>,
-            );
-          }).where((tech) {
-            if (tech.lat == null || tech.long == null) return false;
-            if (widget.userLat == null || widget.userLng == null) return false;
+          final technicians = docs
+              .map((d) => TechnicianModel.fromMap(
+            d.data() as Map<String, dynamic>,
+          ))
+              .toList();
 
-            final dist = Geolocator.distanceBetween(
+          double radius = 20;
+          List<TechnicianModel> nearby = [];
+
+          while (nearby.isEmpty && radius <= 100) {
+            nearby = technicians.where((tech) {
+              if (tech.lat == null || tech.lng == null) return false;
+
+              final distance = Geolocator.distanceBetween(
+                widget.userLat!,
+                widget.userLng!,
+                tech.lat!,
+                tech.lng!,
+              ) /
+                  1000;
+
+              return distance <= radius;
+            }).toList();
+
+            if (nearby.isEmpty) {
+              if (radius == 20) {
+                radius = 40;
+              } else if (radius == 40) {
+                radius = 75;
+              } else if (radius == 75) {
+                radius = 100;
+              } else {
+                break;
+              }
+            }
+          }
+
+          _currentRadius = radius;
+
+
+          nearby.sort((a, b) {
+            final distanceA = Geolocator.distanceBetween(
               widget.userLat!,
               widget.userLng!,
-              tech.lat!,
-              tech.long!,
+              a.lat!,
+              a.lng!,
             );
 
+            final distanceB = Geolocator.distanceBetween(
+              widget.userLat!,
+              widget.userLng!,
+              b.lat!,
+              b.lng!,
+            );
 
-            if (dist / 1000 > 10) return false;
-
-            if (widget.selectedSkills.isNotEmpty) {
-              return widget.selectedSkills
-                  .every((skill) => tech.skills!.contains(skill));
-            }
-
-            return true;
-
-          }).toList();
+            return distanceA.compareTo(distanceB);
+          });
 
           if (nearby.isEmpty) {
             return const Center(
@@ -92,19 +126,43 @@ class _TechnicianSearchResultsScreenState
             );
           }
 
-          return ListView.builder(
-            itemCount: nearby.length,
-            itemBuilder: (context, index) {
-              return TechnicianCard(
-                technician: nearby[index],
-                userLat: widget.userLat,
-                userLng: widget.userLng,
-                serviceLocationAddress: widget.serviceLocationAddress,
-                issueDescription: widget.issueDescription,
-                imageUrl: widget.imageUrl,
-                selectedSkills: widget.selectedSkills,
-              );
-            },
+          return Column(
+            children: [
+
+              if (_currentRadius > 20)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "Expanded search radius to ${_currentRadius.toInt()} km to find more technicians.",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+              Expanded(
+                child: ListView.builder(
+                  itemCount: nearby.length,
+                  itemBuilder: (context, index) {
+                    return TechnicianCard(
+                      technician: nearby[index],
+                      userLat: widget.userLat,
+                      userLng: widget.userLng,
+                      serviceLocationAddress: widget.serviceLocationAddress,
+                      issueDescription: widget.issueDescription,
+                      imageUrl: widget.imageUrl,
+                      selectedSkills: widget.selectedSkills,
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),

@@ -28,6 +28,11 @@ class AccountTypeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Responsive scaling (0.85 - 1.0)
+    final scale = (screenHeight / 850).clamp(0.85, 1.0);
+
     return Scaffold(
       body: SafeArea(
         child: Container(
@@ -42,93 +47,99 @@ class AccountTypeScreen extends ConsumerWidget {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 20,
+            padding: EdgeInsets.symmetric(
+              horizontal: 22 * scale,
+              vertical: 16 * scale,
             ),
             child: Column(
               children: [
-                const SizedBox(height: 20),
+                SizedBox(height: 8 * scale),
 
-                const AppLogo(size: 90),
+                AppLogo(
+                  size: 75 * scale,
+                ),
 
-                const SizedBox(height: 28),
+                SizedBox(height: 18 * scale),
 
-                const OnboardingHeader(
+                OnboardingHeader(
                   title: Text(
                     "Choose Your Account",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 30,
+                      fontSize: 28 * scale,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textDark,
-                      height: 1.2,
+                      height: 1.15,
                     ),
                   ),
                   subtitle: "Select how you would like to use KwikPro.",
                 ),
 
-                const SizedBox(height: 40),
+                SizedBox(height: 22 * scale),
 
-                AppOptionCard(
-                  icon: Icons.home_repair_service_rounded,
-                  iconColor: AppColors.primary,
-                  background: AppColors.cardBlue,
-                  title: "I Need a Service",
-                  subtitle:
-                  "Book trusted technicians for repairs, installation and maintenance.",
-                  onTap: () => _selectRole(
-                    context,
-                    ref,
-                    "user",
+                Expanded(
+                  child: AppOptionCard(
+                    icon: Icons.home_repair_service_rounded,
+                    iconColor: AppColors.primary,
+                    background: AppColors.cardBlue,
+                    title: "I Need a Service",
+                    subtitle:
+                    "Book trusted technicians for repairs, installation and maintenance.",
+                    onTap: () => _selectRole(
+                      context,
+                      ref,
+                      "user",
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 22),
+                SizedBox(height: 14 * scale),
 
-                AppOptionCard(
-                  icon: Icons.handyman_rounded,
-                  iconColor: Colors.green,
-                  background: AppColors.cardGreen,
-                  title: "I Offer Services",
-                  subtitle:
-                  "Receive job requests, connect with customers and grow your business.",
-                  onTap: () => _selectRole(
-                    context,
-                    ref,
-                    "technician",
+                Expanded(
+                  child: AppOptionCard(
+                    icon: Icons.handyman_rounded,
+                    iconColor: Colors.green,
+                    background: AppColors.cardGreen,
+                    title: "I Offer Services",
+                    subtitle:
+                    "Receive job requests, connect with customers and grow your business.",
+                    onTap: () => _selectRole(
+                      context,
+                      ref,
+                      "technician",
+                    ),
                   ),
                 ),
 
-                const Spacer(),
+                SizedBox(height: 18 * scale),
 
-                const Divider(),
+                const Divider(height: 1),
 
-                const SizedBox(height: 10),
+                SizedBox(height: 12 * scale),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     Icon(
                       Icons.lock_outline,
-                      size: 18,
+                      size: 18 * scale,
                       color: AppColors.textLight,
                     ),
-                    SizedBox(width: 8),
-                    Flexible(
+                    SizedBox(width: 8 * scale),
+                    Expanded(
                       child: Text(
                         "Your information is secure and protected.",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.textLight,
-                          fontSize: 14,
+                          fontSize: 13 * scale,
                         ),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 12),
+                SizedBox(height: 6 * scale),
               ],
             ),
           ),

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/technician_model.dart';
 import '../../services/location_service.dart';
 import 'package:kwikpro/providers/auth_provider.dart';
 import 'package:kwikpro/screens/onboarding/welcome_screen.dart';
@@ -9,12 +10,22 @@ import 'package:kwikpro/screens/user/privacy_policy.dart';
 import 'package:kwikpro/screens/user/terms_and_conditions.dart';
 import 'package:kwikpro/screens/user/user_notification_screen.dart';
 import '../../services/notification_service.dart';
-import '../../widgets/service_card.dart';
 import 'package:flutter/services.dart';
 import 'package:kwikpro/screens/user/edit_user_profile_screen.dart';
 import 'package:kwikpro/screens/user/user_job_history_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../services/firestore_service.dart';
+import 'package:kwikpro/screens/user/all_services_screen.dart';
+import 'package:kwikpro/screens/user/all_nearby_technicians_screen.dart';
+import '../../widgets/user_home/recommended_widget.dart';
+
+import '../../widgets/user_home/nearby_technicians_widget.dart';
+import '../../widgets/user_home/popular_services_widget.dart';
+import '../../widgets/user_home/recently_booked_widget.dart';
+import '../../widgets/user_home/user_home_app_bar.dart';
+import '../../widgets/user_home/user_home_drawer.dart';
+import 'all_recommended_screen.dart';
 
 
 class UserHomeScreen extends ConsumerStatefulWidget {
@@ -30,6 +41,12 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   String location = '';
   double? userLat;
   double? userLng;
+
+  List<TechnicianModel> nearbyTechnicians = [];
+  List<TechnicianModel> recentlyBookedTechnicians = [];
+  List<TechnicianModel> recommendedTechnicians = [];
+
+  final FirestoreService _firestoreService = FirestoreService();
 
   final GlobalKey<ScaffoldState> _scaffoldKey =
   GlobalKey<ScaffoldState>();
@@ -53,12 +70,14 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   void initState() {
     super.initState();
     _loadUser();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(seconds: 1));
       _loadCurrentLocation();
     });
     NotificationService.saveFcmToken(collection: 'users');
     NotificationService.setupForegroundNotifications(context);
+
+
   }
 
 
@@ -429,7 +448,25 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    await FirebaseFirestore.instance
+    if (!mounted) return;
+
+    final locationChanged =
+        userLat != result['lat'] || userLng != result['lng'];
+
+    setState(() {
+      location = result['address'];
+      userLat = result['lat'];
+      userLng = result['lng'];
+    });
+
+    if (locationChanged) {
+      await _loadNearbyTechnicians();
+      await _loadRecentlyBookedTechnicians();
+      await _loadRecommendedTechnicians();
+    }
+
+   // Save location in the background.
+    FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .update({
@@ -437,14 +474,74 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
       'lng': result['lng'],
       'currentAddress': result['address'],
     });
+  }
 
-    if (!mounted) return;
 
-    setState(() {
-      location = result['address'];
-      userLat = result['lat'];
-      userLng = result['lng'];
-    });
+  Future<void> _loadNearbyTechnicians() async {
+    if (userLat == null || userLng == null) return;
+
+    try {
+      final technicians =
+      await _firestoreService.getNearbyTechnicians(
+        userLat: userLat!,
+        userLng: userLng!,
+        limit: 10,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        nearbyTechnicians = technicians;
+      });
+    } catch (e) {
+      debugPrint("Nearby technician error: $e");
+    }
+  }
+
+
+  Future<void> _loadRecentlyBookedTechnicians() async {
+    if (userLat == null || userLng == null) return;
+
+    try {
+      final technicians =
+      await _firestoreService.getRecentlyBookedTechnicians(
+        userLat: userLat!,
+        userLng: userLng!,
+      );
+
+      print("Recently booked: ${technicians.length}");
+
+      if (!mounted) return;
+
+      setState(() {
+        recentlyBookedTechnicians = technicians;
+      });
+    } catch (e) {
+      print("Recently booked error: $e");
+    }
+  }
+
+  Future<void> _loadRecommendedTechnicians() async {
+    if (userLat == null || userLng == null) return;
+
+    try {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+
+      final technicians =
+      await _firestoreService.getRecommendedTechnicians(
+        userId: uid,
+        userLat: userLat!,
+        userLng: userLng!,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        recommendedTechnicians = technicians;
+      });
+    } catch (e) {
+      debugPrint("Recommendation error: $e");
+    }
   }
 
 
@@ -469,7 +566,19 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
       name = data?['name'] ?? 'User';
       profilePic = data?['profilePic'] ?? '';
 
+      location = data?['currentAddress'] ?? '';
+
+      userLat = (data?['lat'] as num?)?.toDouble();
+      userLng = (data?['lng'] as num?)?.toDouble();
+
     });
+
+    // Load nearby technicians immediately using saved location.
+    if (userLat != null && userLng != null) {
+      _loadNearbyTechnicians();
+      _loadRecentlyBookedTechnicians();
+      _loadRecommendedTechnicians();
+    }
 
 
   }
@@ -482,136 +591,99 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      endDrawer: _buildDrawer(context),
+      endDrawer: UserHomeDrawer(
+        name: name,
+        profilePic: profilePic,
+        location: location,
+
+        onEditProfile: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const EditUserProfileScreen(),
+            ),
+          );
+        },
+
+        onJobHistory: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const UserJobHistoryScreen(),
+            ),
+          );
+        },
+
+        onPrivacyPolicy: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const PrivacyPolicy(),
+            ),
+          );
+        },
+
+        onTerms: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const TermsAndConditions(),
+            ),
+          );
+        },
+
+        onDeleteAccount: _showDeleteAccountDialog,
+
+        onLogout: () async {
+          try {
+            await ref.read(authServiceProvider).signOut();
+
+            ref.read(authProvider.notifier).logout();
+
+            if (!mounted) return;
+
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const WelcomeScreen(),
+              ),
+                  (_) => false,
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Logout failed: $e")),
+            );
+          }
+        },
+      ),
 
       // ================= STATIC APP BAR =================
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const SizedBox(width: 10),
-                Text('Hi, $name'),
-              ],
+      appBar: UserHomeAppBar(
+        name: name,
+        location: location,
+        profilePic: profilePic,
+        searchQuery: _searchQuery,
+
+        onLocationTap: _openLocationPicker,
+
+        onNotificationTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const UserNotificationScreen(),
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: GestureDetector(
-                onTap: _openLocationPicker,
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                    const SizedBox(width: 2),
-                    Text(
-                      location,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      "Edit",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            ),
-          ],
-        ),
+          );
+        },
 
-        actions: [
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('notifications')
-                .where(
-              'recipientId',
-              isEqualTo: FirebaseAuth.instance.currentUser!.uid,
-            )
-                .where('read', isEqualTo: false)
-                .snapshots(),
-            builder: (context, snapshot) {
-              final count = snapshot.data?.docs.length ?? 0;
+        onProfileTap: () {
+          _scaffoldKey.currentState?.openEndDrawer();
+        },
 
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications_none, size: 35),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const UserNotificationScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  if (count > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          count.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(width: 4),
-
-          GestureDetector(
-            onTap: () => _scaffoldKey.currentState?.openEndDrawer(),
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundImage:
-                profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
-                child: profilePic.isEmpty ? const Icon(Icons.person) : null,
-              ),
-            ),
-          ),
-        ],
-
-        // ================= STATIC SEARCH BAR =================
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(70),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: "Search for services (e.g plumber, electrician)",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.toLowerCase();
-                });
-              },
-            ),
-          ),
-        ),
+        onSearchChanged: (value) {
+          setState(() {
+            _searchQuery = value.toLowerCase();
+          });
+        },
       ),
 
       // ================= SINGLE SCROLL BODY =================
@@ -620,26 +692,73 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
         children: [
 
           // ================= SERVICES =================
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filteredServices.length,
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 180,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.0,
-              ),
-              itemBuilder: (context, index) {
-                final service = filteredServices[index];
-                return ServiceCard(service: service);
-              },
-            ),
+          PopularServicesWidget(
+            services: filteredServices,
+            location: location,
+            lat: userLat,
+            lng: userLng,
+            onSeeAll: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AllServicesScreen(
+                    services: services,
+                    location: location,
+                    lat: userLat,
+                    lng: userLng,
+                  ),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 20),
+
+          NearbyTechniciansWidget(
+            technicians: nearbyTechnicians,
+            userLat: userLat,
+            userLng: userLng,
+            onSeeAll: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AllNearbyTechniciansScreen(
+                    technicians: nearbyTechnicians,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          RecentlyBookedWidget(
+            technicians: recentlyBookedTechnicians,
+            userLat: userLat,
+            userLng: userLng,
+            onSeeAll: () {
+              // We'll create the See All screen next.
+            },
+          ),
+
+
+          const SizedBox(height: 20),
+
+          RecommendedWidget(
+            technicians: recommendedTechnicians,
+            userLat: userLat,
+            userLng: userLng,
+            onSeeAll: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AllRecommendedScreen(
+                    technicians: recommendedTechnicians,
+                  ),
+                ),
+              );
+            },
+          ),
 
 
         ],
@@ -648,183 +767,5 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   }
 
 
-  Drawer _buildDrawer(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
 
-            // HEADER
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              color: Colors.blue,
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage:
-                    profilePic.isNotEmpty
-                        ? NetworkImage(profilePic)
-                        : null,
-                    child: profilePic.isEmpty
-                        ? const Icon(Icons.person, size: 40)
-                        : null,
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 5),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: Colors.white70,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        location,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // EDIT PROFILE
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text("Edit Profile"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                    const EditUserProfileScreen(),
-                  ),
-                );
-              },
-            ),
-
-            // JOB HISTORY
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text("Job History"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                    const UserJobHistoryScreen(),
-                  ),
-                );
-              },
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.privacy_tip),
-              title: const Text("Privacy Policy"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                    const PrivacyPolicy(),
-                  ),
-                );
-              },
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.rule),
-              title: const Text("Terms and Condition"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                    const TermsAndConditions(),
-                  ),
-                );
-              },
-            ),
-
-            // DELETE ACCOUNT
-            ListTile(
-              leading: const Icon(
-                Icons.delete_forever,
-                color: Colors.red,
-              ),
-              title: const Text(
-                "Delete Account",
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: _showDeleteAccountDialog,
-            ),
-
-            const Spacer(),
-
-            const Divider(),
-
-            // LOGOUT
-            ListTile(
-              leading: const Icon(
-                Icons.logout,
-                color: Colors.red,
-              ),
-              title: const Text("Logout"),
-              onTap: () async {
-                try {
-                  await ref
-                      .read(authServiceProvider)
-                      .signOut();
-
-                  ref
-                      .read(authProvider.notifier)
-                      .logout();
-
-                  if (!mounted) return;
-
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                      const WelcomeScreen(),
-                    ),
-                        (route) => false,
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "Logout failed: $e",
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
