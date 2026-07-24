@@ -2,7 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/location_model.dart';
 import '../../models/technician_model.dart';
+import '../../services/google_maps_service.dart';
+import '../../services/location_repository.dart';
 import '../../services/location_service.dart';
 import 'package:kwikpro/providers/auth_provider.dart';
 import 'package:kwikpro/screens/onboarding/welcome_screen.dart';
@@ -408,9 +411,14 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
   }
 
   Future<void> _updateUserLocation(double lat, double lng) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    final address = await LocationService.reverseGeocode(lat, lng);
+    final address = await GoogleMapsService.reverseGeocode(lat, lng);
+
+    final locationModel = LocationModel(
+      lat: lat,
+      lng: lng,
+      address: address,
+    );
 
     setState(() {
       userLat = lat;
@@ -418,14 +426,8 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
       location = address;
     });
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .update({
-      'lat': lat,
-      'lng': lng,
-      'currentAddress': address,
-    });
+    await const LocationRepository().updateUserLocation(locationModel);
+
   }
 
 
@@ -434,12 +436,14 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
       location = "Detecting location...";
     });
 
-    final result = await LocationService.getCurrentLocation();
+    const repository = LocationRepository();
+
+    final currentLocation = await repository.getCurrentLocation();
 
     if (!mounted) return;
 
-    //  CASE 1: location failed
-    if (result == null) {
+    // Could not determine location
+    if (currentLocation == null) {
       setState(() {
         location = "Location not available. Tap to set manually.";
       });
@@ -448,15 +452,14 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    if (!mounted) return;
-
     final locationChanged =
-        userLat != result['lat'] || userLng != result['lng'];
+        userLat != currentLocation.lat ||
+            userLng != currentLocation.lng;
 
     setState(() {
-      location = result['address'];
-      userLat = result['lat'];
-      userLng = result['lng'];
+      location = currentLocation.address;
+      userLat = currentLocation.lat;
+      userLng = currentLocation.lng;
     });
 
     if (locationChanged) {
@@ -465,15 +468,9 @@ class _UserHomeScreenState extends ConsumerState<UserHomeScreen> {
       await _loadRecommendedTechnicians();
     }
 
-   // Save location in the background.
-    FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .update({
-      'lat': result['lat'],
-      'lng': result['lng'],
-      'currentAddress': result['address'],
-    });
+    // Save latest location in Firestore
+    await repository.updateUserLocation(currentLocation);
+
   }
 
 

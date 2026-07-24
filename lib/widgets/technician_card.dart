@@ -7,7 +7,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:kwikpro/screens/user/active_job_screen.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:intl/intl.dart';
+import '../core/utils/distance_helper.dart';
 import '../screens/user/view_technician_profile_screen.dart';
+import '../services/location_repository.dart';
 import '../services/notification_service.dart';
 
 class TechnicianCard extends StatefulWidget {
@@ -181,7 +183,6 @@ class _TechnicianCardState extends State<TechnicianCard> {
 
 
   Widget _buildCard(BuildContext context, _RequestData data, {required bool hasWorkedBefore}) {
-    final distanceData = _calculateDistance();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 15),
@@ -196,7 +197,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTechnicianInfo(distanceData, hasWorkedBefore: hasWorkedBefore,),
+                  _buildTechnicianInfo(hasWorkedBefore: hasWorkedBefore,),
                   const SizedBox(height: 6),
 
                 ],
@@ -211,29 +212,6 @@ class _TechnicianCardState extends State<TechnicianCard> {
   }
 
 
-  _DistanceData _calculateDistance() {
-    if (widget.userLat == null ||
-        widget.userLng == null ||
-        widget.technician.lat == null ||
-        widget.technician.lng == null) {
-      return _DistanceData(distance: 0, eta: "--");
-    }
-
-    final distanceKm = Geolocator.distanceBetween(
-      widget.userLat!,
-      widget.userLng!,
-      widget.technician.lat!,
-      widget.technician.lng!,
-    ) /
-        1000;
-
-    final minutes = ((distanceKm / 40) * 60).ceil();
-
-    return _DistanceData(
-      distance: distanceKm,
-      eta: "$minutes min away",
-    );
-  }
 
 
   Widget _buildAvatar() {
@@ -273,7 +251,7 @@ class _TechnicianCardState extends State<TechnicianCard> {
   }
 
 
-  Widget _buildTechnicianInfo(_DistanceData d, {
+  Widget _buildTechnicianInfo({
     required bool hasWorkedBefore,
   }) {
 
@@ -361,14 +339,48 @@ class _TechnicianCardState extends State<TechnicianCard> {
 
         const SizedBox(height: 6),
 
-        Row(
-          children: [
-            const Icon(Icons.location_on, size: 16),
-            Text('${d.distance.toStringAsFixed(1)} km'),
-            const SizedBox(width: 10),
-            const Icon(Icons.timer, size: 16),
-            Text(d.eta),
-          ],
+        FutureBuilder<Map<String, dynamic>?>(
+          future: LocationRepository().getDistanceAndEta(
+            originLat: widget.userLat!,
+            originLng: widget.userLng!,
+            destinationLat: widget.technician.lat!,
+            destinationLng: widget.technician.lng!,
+          ),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Row(
+                children: [
+                  Icon(Icons.location_on, size: 16),
+                  SizedBox(width: 6),
+                  Text("Calculating..."),
+                ],
+              );
+            }
+
+            final data = snapshot.data!;
+
+            return Row(
+              children: [
+                const Icon(Icons.location_on, size: 16),
+
+                Text(
+                  DistanceHelper.formatDistance(
+                    data["distanceKm"],
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                const Icon(Icons.timer, size: 16),
+
+                Text(
+                  DistanceHelper.formatEta(
+                    data["durationMinutes"],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
 
         const SizedBox(height: 10),
@@ -443,12 +455,7 @@ class _RequestData {
   });
 }
 
-class _DistanceData {
-  final double distance;
-  final String eta;
 
-  _DistanceData({required this.distance, required this.eta});
-}
 
 
 

@@ -1,19 +1,17 @@
-import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
-import 'dart:math';
-
-import 'google_maps_service.dart';
 
 class LocationService {
-  static Future<Map<String, dynamic>?> getCurrentLocation() async {
+  /// Returns the current GPS position only.
+  static Future<Position?> getCurrentPosition() async {
     try {
-      bool serviceEnabled =
+      final serviceEnabled =
       await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
+        debugPrint("Location service disabled");
         return null;
       }
 
@@ -26,6 +24,7 @@ class LocationService {
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
+        debugPrint("Location permission denied");
         return null;
       }
 
@@ -37,114 +36,17 @@ class LocationService {
         "GPS: ${position.latitude}, ${position.longitude}",
       );
 
-      final address = await GoogleMapsService.reverseGeocode(
-        position.latitude,
-        position.longitude,
-      );
-
-      return {
-        "lat": position.latitude,
-        "lng": position.longitude,
-        "address": address,
-      };
+      return position;
     } catch (e) {
       debugPrint("LocationService Error: $e");
       return null;
     }
   }
 
-  static Future<String> reverseGeocode(
-      double lat,
-      double lng,
-      ) async {
-    try {
-      final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/reverse"
-            "?format=json"
-            "&lat=$lat"
-            "&lon=$lng"
-            "&zoom=18"
-            "&addressdetails=1",
-      );
-
-      final response = await http.get(
-        url,
-        headers: {
-          "User-Agent":
-          "KwikProApp/1.0",
-        },
-      );
-
-      if (response.statusCode != 200) {
-        return "Unknown location";
-      }
-
-      final data =
-      json.decode(response.body);
-
-      final address =
-      data["address"];
-
-      String pick(
-          List<String?> values,
-          ) {
-        for (final v in values) {
-          if (v != null &&
-              v.trim().isNotEmpty) {
-            return v;
-          }
-        }
-        return "";
-      }
-
-      final area = pick([
-        address?["neighbourhood"],
-        address?["suburb"],
-        address?["quarter"],
-        address?["residential"],
-        address?["hamlet"],
-      ]);
-
-      final district = pick([
-        address?["city_district"],
-        address?["state_district"],
-        address?["county"],
-      ]);
-
-      final city = pick([
-        address?["city"],
-        address?["town"],
-        address?["village"],
-      ]);
-
-      final state =
-      address?["state"];
-
-      final parts = [
-        area,
-        district,
-        city,
-        state,
-      ]
-          .where(
-            (e) =>
-        e != null &&
-            e.toString().trim().isNotEmpty,
-      )
-          .toList();
-
-      return parts.isNotEmpty
-          ? parts.join(", ")
-          : "Unknown location";
-    } catch (e) {
-      debugPrint(
-        "Reverse Geocode Error: $e",
-      );
-      return "Unknown location";
-    }
-  }
 
 
+
+  /// Distance in KM
   static double calculateDistance(
       double startLat,
       double startLng,
@@ -163,7 +65,10 @@ class LocationService {
                 sin(dLng / 2) *
                 sin(dLng / 2);
 
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    final c = 2 * atan2(
+      sqrt(a),
+      sqrt(1 - a),
+    );
 
     return earthRadius * c;
   }

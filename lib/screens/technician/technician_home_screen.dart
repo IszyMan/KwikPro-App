@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
+import '../../models/location_model.dart';
+import '../../services/location_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kwikpro/screens/technician/edit_technician_profile_screen.dart';
@@ -13,9 +14,7 @@ import '../../services/notification_service.dart';
 import '../../widgets/showcase_feed_widget.dart';
 import '../onboarding/welcome_screen.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
-
 import '../user/terms_and_conditions.dart';
 
 class TechnicianHomeScreen extends ConsumerStatefulWidget {
@@ -27,22 +26,23 @@ class TechnicianHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
-  StreamSubscription<Position>? _positionStream;
+
   final user = FirebaseAuth.instance.currentUser;
+  LocationModel? _currentLocation;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   Timer? timer;
   Map<String, Timer> requestTimers = {};
   Map<String, int> countdowns = {};
-
   Map<String, dynamic>? _technicianData;
-
   String? _verificationId;
+
 
   @override
   void initState() {
     super.initState();
     _fetchTechnicianData();
+    _loadCurrentLocation();
     NotificationService.saveFcmToken(collection: 'technicians');
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -66,7 +66,18 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
     }
   }
 
+  Future<void> _loadCurrentLocation() async {
+    final location =
+    await const LocationRepository().getCurrentLocation();
 
+    if (location == null) return;
+
+    if (!mounted) return;
+
+    setState(() {
+      _currentLocation = location;
+    });
+  }
 
 
 
@@ -257,39 +268,56 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
 
   @override
   void dispose() {
-    _positionStream?.cancel();
     timer?.cancel();
     requestTimers.forEach((key, t) => t.cancel());
     super.dispose();
   }
 
-  void _updateOnlineStatus(bool value) async {
+  Future<void> _updateOnlineStatus(bool online) async {
     if (user == null) return;
 
-    if (value) {
-      _positionStream = Geolocator.getPositionStream(
-        locationSettings: LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          distanceFilter: 10,
-        ),
-      ).listen((Position position) async {
-        await FirebaseFirestore.instance
-            .collection('technicians')
-            .doc(user!.uid)
-            .update({
-          'isOnline': true,
-          'lat': position.latitude,
-          'long': position.longitude,
-        });
+    final doc = FirebaseFirestore.instance
+        .collection("technicians")
+        .doc(user!.uid);
+
+    if (!online) {
+      await doc.update({
+        "isOnline": false,
       });
-    } else {
-      await _positionStream?.cancel();
-      _positionStream = null;
-      await FirebaseFirestore.instance
-          .collection('technicians')
-          .doc(user!.uid)
-          .update({'isOnline': false});
+
+      return;
     }
+
+    final location =
+    await const LocationRepository().getCurrentLocation();
+
+    if (location == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Unable to get your location.",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    await doc.update({
+      "isOnline": true,
+      "lat": location.lat,
+      "lng": location.lng,
+      "location": location.address,
+      "lastLocationUpdate": FieldValue.serverTimestamp(),
+    });
+
+    setState(() {
+      _currentLocation = location;
+    });
+
+    await _fetchTechnicianData();
   }
 
   Future<void> _updateStatus(
@@ -392,35 +420,63 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "Hello,",
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
+
+            Row(
+              children: [
+                Text(
+                  "Hello,",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+
+                Text(
+                  " $name",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
+                ),
+
+                if (_technicianData?['isVerified'] == true) ...[
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.verified,
+                    color: Colors.green,
+                    size: 18,
+                  ),
+                ],
+              ],
             ),
 
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
 
-            Text(
-              " $name",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  size: 14,
+                  color: Colors.red,
+                ),
+
+                const SizedBox(width: 4),
+
+                Expanded(
+                  child: Text(
+                    _currentLocation?.address ?? "Detecting location...",
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+              ],
             ),
-
-
-            SizedBox(width: 4),
-
-            if (_technicianData?['isVerified'] == true)
-              Icon(
-                Icons.verified_sharp,
-                size: 22,
-                color: Colors.green,
-              ),
           ],
         ),
         actions: [
@@ -796,8 +852,8 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
 
   Widget technicianHeader(Map<String, dynamic> data) {
     final serviceType = data['service'] ?? '';
-    final areaOfOperation = data['location'] ?? '';
     final years = data['yearsOfExperience'] ?? 0;
+    final completedJobs = data['completedJobs'] ?? 0;
     final isVerified = data['isVerified'] ?? false;
     final isSuspended = data['isSuspended'] ?? false;
 
@@ -806,53 +862,89 @@ class _TechnicianHomeScreenState extends ConsumerState<TechnicianHomeScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 5,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Row(
-                children: [
-                  Text("My Service: ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w300),),
-                  Text(
-                    serviceType,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
+              const Text(
+                "My Service: ",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+              Text(
+                serviceType,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
+
           const SizedBox(height: 8),
+
           Row(
             children: [
-              Text("Area of Operation: ", style: TextStyle(fontWeight: FontWeight.w100),),
-              Text("$areaOfOperation", style: TextStyle(fontWeight: FontWeight.bold),),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text("Experience: "),
-              Text("$years years", style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Chip(
-                label: Text(isSuspended ? "Suspended" : "Active"),
-                backgroundColor:
-                isSuspended ? Colors.red.shade100 : Colors.green.shade100,
+              const Text("Experience: "),
+              Text(
+                "$years years",
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              SizedBox(width: 10),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              const Icon(
+                Icons.task_alt,
+                color: Colors.green,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              const Text("Completed Jobs: "),
+              Text(
+                "$completedJobs",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
               Chip(
                 label: Text(
-                  isVerified ? 'Verified ✅' : 'Pending Verification ⏳',
+                  isSuspended ? "Suspended" : "Active",
+                ),
+                backgroundColor: isSuspended
+                    ? Colors.red.shade100
+                    : Colors.green.shade100,
+              ),
+              const SizedBox(width: 10),
+              Chip(
+                label: Text(
+                  isVerified
+                      ? 'Verified ✅'
+                      : 'Pending Verification ⏳',
                   style: TextStyle(
-                    color: isVerified ? Colors.green : Colors.orange,
+                    color: isVerified
+                        ? Colors.green
+                        : Colors.orange,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

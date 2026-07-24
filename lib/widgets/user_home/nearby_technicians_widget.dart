@@ -69,9 +69,12 @@ class NearbyTechniciansWidget extends StatelessWidget {
                 rating: technician.avgServiceRating ?? 0,
                 reviewCount: technician.completedJobs ?? 0,
                 isVerified: technician.isVerified,
-                distance: technician.distanceKm == null
+                distance:
+                technician.distanceKm == null ||
+                    technician.durationMinutes == null
                     ? null
-                    : DistanceHelper.formatEta(technician.distanceKm!),
+                    : "${DistanceHelper.formatDistance(technician.distanceKm!)} • "
+                    "${DistanceHelper.formatEta(technician.durationMinutes!)}",
                 onTap: () {
                   Navigator.push(
                     context,

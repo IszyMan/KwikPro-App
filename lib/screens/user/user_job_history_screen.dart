@@ -1,23 +1,31 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:kwikpro/screens/user/view_technician_profile_screen.dart';
-
-import '../../widgets/technician_card.dart';
+import '../../models/job_history_item.dart';
+import '../../services/google_maps_service.dart';
+import '../../services/location_repository.dart';
+import '../../widgets/user_jobs/active_job_card.dart';
 import 'package:kwikpro/models/technician_model.dart';
+import '../../widgets/user_jobs/completed_job_card.dart';
 
 class UserJobHistoryScreen extends StatefulWidget {
   const UserJobHistoryScreen({super.key});
+
+
 
   @override
   State<UserJobHistoryScreen> createState() =>
       _UserJobHistoryScreenState();
 }
 
-class _UserJobHistoryScreenState
-    extends State<UserJobHistoryScreen> {
+class _UserJobHistoryScreenState extends State<UserJobHistoryScreen> {
+
   final user = FirebaseAuth.instance.currentUser;
+  final LocationRepository _locationRepository = const LocationRepository();
+
+  /// Cache technicians
+  final Map<String, TechnicianModel> _technicianCache = {};
 
   final activeStatuses = const [
     "pending",
@@ -29,25 +37,6 @@ class _UserJobHistoryScreenState
     "completionRequested",
   ];
 
-  String formatDate(Timestamp? timestamp) {
-    if (timestamp == null) return '';
-    return DateFormat('dd MMM yyyy, hh:mm a')
-        .format(timestamp.toDate());
-  }
-
-  Color getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      case 'pending':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
-
   Stream<QuerySnapshot> getJobStream() {
     return FirebaseFirestore.instance
         .collection('requests')
@@ -56,113 +45,160 @@ class _UserJobHistoryScreenState
         .snapshots();
   }
 
-  /// ✅ FIXED ACTIVE JOB STREAM (NO isActive)
-  Stream<QuerySnapshot> getActiveJobStream() {
-    return FirebaseFirestore.instance
-        .collection('requests')
-        .where('userId', isEqualTo: user!.uid)
-        .where('status', whereIn: activeStatuses)
-        .limit(1)
-        .snapshots();
-  }
-
   Future<TechnicianModel?> _getTechnician(String id) async {
+
+    /// Already cached?
+    if (_technicianCache.containsKey(id)) {
+      return _technicianCache[id];
+    }
+
     final doc = await FirebaseFirestore.instance
-        .collection('technicians')
+        .collection("technicians")
         .doc(id)
         .get();
 
     if (!doc.exists) return null;
-    return TechnicianModel.fromMap(doc.data()!);
+
+    final technician = TechnicianModel.fromMap(doc.data()!);
+
+    _technicianCache[id] = technician;
+
+    return technician;
+  }
+
+  /// Preload ALL technicians in parallel
+  Future<List<JobHistoryItem>> _buildJobItems(
+      List<QueryDocumentSnapshot> jobs,
+      ) async {
+
+    final futures = jobs.map((job) async {
+      final request = job.data() as Map<String, dynamic>;
+      final techId = request["technicianId"];
+
+      if (techId == null) return null;
+
+      final technician = await _getTechnician(techId);
+
+      if (technician == null) return null;
+
+      double? distanceKm;
+      int? etaMinutes;
+
+      final techLat = technician.lat;
+      final techLng = technician.lng;
+
+      final userLat = (request["userLat"] as num?)?.toDouble();
+      final userLng = (request["userLng"] as num?)?.toDouble();
+
+      if (techLat != null &&
+          techLng != null &&
+          userLat != null &&
+          userLng != null) {
+
+        final route = await GoogleMapsService.getDistanceAndEta(
+          originLat: techLat,
+          originLng: techLng,
+          destinationLat: userLat,
+          destinationLng: userLng,
+        );
+
+        if (route != null) {
+          distanceKm = (route["distanceKm"] as num?)?.toDouble();
+          etaMinutes = (route["durationMinutes"] as num?)?.toInt();
+        }
+      }
+
+      return JobHistoryItem(
+        technician: technician,
+        request: request,
+        distanceKm: distanceKm,
+        etaMinutes: etaMinutes,
+      );
+    });
+
+    final results = await Future.wait(futures);
+
+    return results.whereType<JobHistoryItem>().toList();
   }
 
   Future<void> _refresh() async {
     setState(() {});
   }
 
-  void bookAgain(Map<String, dynamic> data) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Book Again for ${data['service'] ?? 'service'}",
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+
     if (user == null) {
       return const Scaffold(
-        body: Center(child: Text("No user found")),
+        body: Center(
+          child: Text("No user found"),
+        ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("My Job History"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
-        ],
-      ),
 
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: StreamBuilder<QuerySnapshot>(
-          stream: getJobStream(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        appBar: AppBar(
+          title: const Text("My Jobs"),
+        ),
 
-            final jobs = snapshot.data!.docs;
+        body: RefreshIndicator(
+            onRefresh: _refresh,
+            child: StreamBuilder<QuerySnapshot>(
+                stream: getJobStream(),
+                builder: (context, snapshot) {
 
-            final completedJobs = jobs.where((d) {
-              final data = d.data() as Map<String, dynamic>;
-              return data['status'] == 'completed';
-            }).toList();
+                  if (!snapshot.hasData) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
 
-            return ListView(
-              padding: const EdgeInsets.only(top: 8, bottom: 12),
-              children: [
+                  final jobs = snapshot.data!.docs;
 
-                /// ================= ACTIVE JOB (FIXED) =================
-                StreamBuilder<QuerySnapshot>(
-                  stream: getActiveJobStream(),
-                  builder: (context, activeSnap) {
-                    if (!activeSnap.hasData ||
-                        activeSnap.data!.docs.isEmpty) {
-                      return const SizedBox();
-                    }
+                  return FutureBuilder<List<JobHistoryItem>>(
+                    future: _buildJobItems(jobs),
+                    builder: (context, itemSnap) {
 
-                    final doc = activeSnap.data!.docs.first;
-                    final data =
-                    doc.data() as Map<String, dynamic>;
+                      if (!itemSnap.hasData) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
 
-                    final techId = data['technicianId'];
+                      final items = itemSnap.data!;
 
-                    if (techId == null) return const SizedBox();
+                      /// Active Job
+                      JobHistoryItem? activeItem;
 
-                    return FutureBuilder<TechnicianModel?>(
-                      future: _getTechnician(techId),
-                      builder: (context, techSnap) {
-                        if (!techSnap.hasData) {
-                          return const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: CircularProgressIndicator(),
-                          );
-                        }
+                      try {
+                        activeItem = items.firstWhere(
+                              (e) => activeStatuses.contains(
+                            e.request["status"],
+                          ),
+                        );
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                      } catch (_) {
+                        activeItem = null;
+                      }
+
+                      /// Completed Jobs
+                      final completedItems = items.where((e) {
+
+                        return e.request["status"] == "completed";
+
+                      }).toList();
+
+                      return ListView(
+
+                        padding: const EdgeInsets.fromLTRB(0,12,0,24,),
+                        children: [
+
+                          if (activeItem != null) ...[
                             const Padding(
-                              padding: EdgeInsets.all(12),
+                              padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
                               child: Text(
-                                "Active Job",
+                                "Current Job",
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -170,137 +206,142 @@ class _UserJobHistoryScreenState
                               ),
                             ),
 
-                            TechnicianCard(
-                              technician: techSnap.data!,
-                              userLat: data['userLat'],
-                              userLng: data['userLng'],
-                              serviceLocationAddress:
-                              data['serviceLocationAddress'] ?? "",
-                              issueDescription:
-                              data['description'] ?? "",
-                              imageUrl: data['imageUrl'] ?? "",
-                              selectedSkills: const [],
+                            ActiveJobCard(
+                              item: activeItem,
+                              onMessage: () {
+                                // TODO Open chat
+                              },
+                              onCall: () {
+                                // TODO Launch dialer
+                              },
                             ),
+
+                            const SizedBox(height: 20),
                           ],
-                        );
-                      },
-                    );
-                  },
-                ),
 
-                /// ================= COMPLETED HEADER =================
-                const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    "Completed Jobs",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                          /// ================= COMPLETED HEADER =================
 
-                /// ================= COMPLETED JOBS =================
-                ...completedJobs.map((doc) {
-                  final data =
-                  doc.data() as Map<String, dynamic>;
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16,0,16,12,),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
 
-                  return Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                      children: [
-                        /// SERVICE
-                        Text(
-                          "${data['service']} Job",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold),
-                        ),
-
-                        const SizedBox(height: 6),
-
-                        /// DESCRIPTION
-                        Text(data['description'] ?? ""),
-
-                        const SizedBox(height: 6),
-
-                        /// LOCATION
-                        Text(
-                          data['serviceLocationAddress'] ?? "",
-                          style:
-                          const TextStyle(color: Colors.grey),
-                        ),
-
-                        const SizedBox(height: 6),
-
-                        /// DATE
-                        Text(
-                          formatDate(data['createdAt']),
-                          style:
-                          const TextStyle(color: Colors.grey),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        /// BOOK AGAIN
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              final techId = data['technicianId'];
-
-                              final tech = await _getTechnician(techId);
-
-                              if (tech == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Technician not found")),
-                                );
-                                return;
-                              }
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ViewTechnicianProfileScreen(
-                                    technician: tech,
-                                    userLat: data['userLat'],
-                                    userLng: data['userLng'],
-                                    serviceLocationAddress:
-                                    data['serviceLocationAddress'] ?? "",
-                                    issueDescription: data['description'] ?? "",
-                                    imageUrl: data['imageUrl'] ?? "",
-                                    selectedSkills: const [],
+                                const Text(
+                                  "Completed Jobs",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.refresh),
-                            label: const Text("Book Again"),
+
+                                const SizedBox(height: 4),
+
+                                Text(
+                                  "${completedItems.length} job${completedItems.length == 1 ? "" : "s"} completed",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+
+                          if (completedItems.isEmpty)
+
+                            Padding(
+                              padding:
+                              const EdgeInsets.symmetric(
+                                horizontal: 30,
+                                vertical: 50,
+                              ),
+
+                              child: Column(
+                                children: [
+
+                                  Icon(
+                                    Icons.assignment_outlined,
+                                    size: 70,
+                                    color: Colors.grey.shade400,
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  const Text(
+                                    "No completed jobs yet.",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight:
+                                      FontWeight.bold,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 10),
+
+                                  Text(
+                                    "When you hire a technician,\nyour completed jobs will appear here.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle( color: Colors.grey.shade600,height: 1.5,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 28),
+
+                                  SizedBox( width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {},
+
+                                      icon: const Icon(
+                                        Icons.search,
+                                      ),
+
+                                      label: const Text(
+                                        "Find Technician",
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          if (completedItems.isNotEmpty)
+
+                            ...completedItems.map((item) {
+
+                              final technician = item.technician;
+                              final data = item.request;
+
+                              return CompletedJobCard(
+                                item: item,
+                                onReview: () {
+
+                                  /// TODO
+
+                                },
+                                onBookAgain: () {
+                                  Navigator.push(context, MaterialPageRoute( builder: (_) =>
+                                          ViewTechnicianProfileScreen(
+                                            technician: technician,
+                                            userLat: data["userLat"],
+                                            userLng:  data["userLng"],
+                                            serviceLocationAddress:  data["serviceLocationAddress"] ?? "",
+                                            issueDescription:  data["description"] ?? "",
+                                            imageUrl:  data["imageUrl"] ?? "",
+                                            selectedSkills: const [],
+
+                                          ),
+                                  ),
+                                  );
+                                },
+                              );
+                            }),
+                        ],
+                      );
+                    },
                   );
-                }),
-              ],
-            );
-          },
+                },
+            ),
         ),
-      ),
     );
   }
 }

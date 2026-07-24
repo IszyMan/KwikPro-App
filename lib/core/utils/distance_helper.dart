@@ -1,6 +1,10 @@
 class DistanceHelper {
-  static String formatEta(double distanceKm) {
-    final minutes = ((distanceKm / 40) * 60).ceil();
+
+  static String formatDistance(double km) {
+    return "${km.toStringAsFixed(1)} km";
+  }
+
+  static String formatEta(int minutes) {
 
     if (minutes < 60) {
       return "$minutes min away";

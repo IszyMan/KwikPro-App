@@ -60,7 +60,7 @@ class RecentlyBookedWidget extends StatelessWidget {
                 isVerified: technician.isVerified,
                 distance: technician.distanceKm == null
                     ? null
-                    : DistanceHelper.formatEta(
+                    : DistanceHelper.formatDistance(
                   technician.distanceKm!,
                 ),
                 onTap: () {

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import '../../services/location_repository.dart';
 import '../../services/location_service.dart';
 
 import 'technician_search_result_screen.dart';
@@ -169,16 +170,16 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
     setState(() => _loading = true);
 
     try {
-      final result = await LocationService.getCurrentLocation();
+      final location = await LocationRepository().getCurrentLocation();
 
-      if (result == null) {
+      if (location == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please enable location or set manually")),
         );
         return;
       }
-      userLat = result['lat'];
-      userLng = result['lng'];
+      userLat = location.lat;
+      userLng = location.lng;
 
       Navigator.push(
         context,
@@ -210,11 +211,11 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
       _locating = true;
     });
 
-    final result = await LocationService.getCurrentLocation();
+    final location = await LocationRepository().getCurrentLocation();
 
     if (!mounted) return;
 
-    if (result == null) {
+    if (location == null) {
       setState(() {
         _location = "Unable to detect location. Please set manually.";
         _locationController.text = _location;
@@ -224,10 +225,10 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
     }
 
     setState(() {
-      userLat = result['lat'];
-      userLng = result['lng'];
-      _location = result['address'];
-      _locationController.text = result['address'];
+      userLat = location.lat;
+      userLng = location.lng;
+      _location = location.address;
+      _locationController.text = location.address;
       _locating = false;
     });
   }

@@ -9,6 +9,8 @@
 
  const axios = require("axios");
  const {onCall} = require("firebase-functions/v2/https");
+
+ const {onDocumentCreated} = require("firebase-functions/v2/firestore");
  const {defineSecret} = require("firebase-functions/params");
 
  const googleApiKey = defineSecret("GOOGLE_MAPS_API_KEY");
@@ -38,95 +40,61 @@ setGlobalOptions({maxInstances: 10});
 //   response.send("Hello from Firebase!");
 // });
 
-const functions = require("firebase-functions");
+
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-exports.notifyTechnicianOnNewRequest = functions.firestore
-  .document("requests/{requestId}")
-  .onCreate(async (snap, context) => {
+exports.notifyTechnicianOnNewRequest = onDocumentCreated(
+  "requests/{requestId}",
+  async (event) => {
+    const snap = event.data;
+
+    if (!snap) return;
+
     const data = snap.data();
+
     const technicianId = data.technicianId;
 
-    if (!technicianId) return null;
+    if (!technicianId) return;
 
     const techDoc = await admin.firestore()
-      .collection("technicians")
-      .doc(technicianId)
-      .get();
+        .collection("technicians")
+        .doc(technicianId)
+        .get();
 
-    if (!techDoc.exists) return null;
+    if (!techDoc.exists) return;
 
     const techData = techDoc.data();
+
     const token = techData.fcmToken;
 
-    if (!token) return null;
+    if (!token) return;
 
-    // 🔔 SEND PUSH
     await admin.messaging().send({
-      token: token,
+      token,
       notification: {
         title: "New Job Request 🔧",
         body: `${data.service} request near you`,
       },
       data: {
-        requestId: context.params.requestId,
+        requestId: event.params.requestId,
         type: "request",
       },
     });
 
-    // 🔔 SAVE IN-APP NOTIFICATION
     await admin.firestore()
-      .collection("technicians")
-      .doc(technicianId)
-      .collection("notifications")
-      .add({
-        title: "New Job Request",
-        body: `${data.service} request near you`,
-        type: "request",
-        requestId: context.params.requestId,
-        isRead: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-    return null;
-  });
-
-
-  exports.reverseGeocode = onCall(
-    {
-      secrets: [googleApiKey],
-    },
-    async (request) => {
-      const {lat, lng} = request.data;
-
-      if (lat == null || lng == null) {
-        throw new Error("Latitude and longitude are required.");
-      }
-
-      const apiKey = googleApiKey.value();
-
-      const url =
-        "https://maps.googleapis.com/maps/api/geocode/json";
-
-      const response = await axios.get(url, {
-        params: {
-          latlng: `${lat},${lng}`,
-          key: apiKey,
-        },
-      });
-
-      const results = response.data.results;
-
-      if (!results || results.length === 0) {
-        return {
-          address: "Unknown location",
-        };
-      }
-
-      return {
-        address: results[0].formatted_address,
-      };
-    }
-  );
+        .collection("technicians")
+        .doc(technicianId)
+        .collection("notifications")
+        .add({
+          title: "New Job Request",
+          body: `${data.service} request near you`,
+          type: "request",
+          requestId: event.params.requestId,
+          isRead: false,
+          createdAt:
+              admin.firestore.FieldValue.serverTimestamp(),
+        });
+  }
+);

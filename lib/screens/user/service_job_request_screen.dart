@@ -4,10 +4,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import '../../services/location_service.dart';
+import '../../services/location_repository.dart';
 
 import 'technician_search_result_screen.dart';
 
@@ -73,11 +71,10 @@ class _ServiceJobRequestScreenState extends State<ServiceJobRequestScreen> {
         locating = true;
       });
 
-      final result =
-      await LocationService
-          .getCurrentLocation();
+      final location =
+      await LocationRepository().getCurrentLocation();
 
-      if (result == null) {
+      if (location == null) {
         setState(() {
           locating = false;
           _locationController.text =
@@ -86,11 +83,8 @@ class _ServiceJobRequestScreenState extends State<ServiceJobRequestScreen> {
         return;
       }
 
-      userLat =
-      result["lat"];
-
-      userLng =
-      result["lng"];
+      userLat = location.lat;
+      userLng = location.lng;
 
       if (_userEditedLocation) {
         setState(() {
@@ -101,8 +95,7 @@ class _ServiceJobRequestScreenState extends State<ServiceJobRequestScreen> {
 
       setState(() {
         locating = false;
-        _locationController.text =
-        result["address"];
+        _locationController.text =location.address;
       });
     } catch (e) {
       setState(() {
@@ -156,13 +149,12 @@ class _ServiceJobRequestScreenState extends State<ServiceJobRequestScreen> {
     setState(() => loading = true);
 
     if (userLat == null || userLng == null) {
-      final result =
-      await LocationService
-          .getCurrentLocation();
+      final location =
+      await LocationRepository().getCurrentLocation();
 
-      if (result != null) {
-        userLat = result["lat"];
-        userLng = result["lng"];
+      if (location != null) {
+        userLat = location.lat;
+        userLng = location.lng;
       }
     }
 

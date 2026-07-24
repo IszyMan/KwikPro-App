@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:kwikpro/models/technician_model.dart';
+import '../models/technician_search_result.dart';
 import '../models/user_model.dart';
 import 'package:kwikpro/services/location_service.dart';
+
+import 'google_maps_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -117,11 +120,15 @@ class FirestoreService {
           .compareTo(b.distanceKm ?? 999999),
     );
 
-    if (technicians.length > limit) {
-      return technicians.take(limit).toList();
-    }
+    final limited = technicians.length > limit
+        ? technicians.take(limit).toList()
+        : technicians;
 
-    return technicians;
+    return await attachRouteInfo(
+      technicians: limited,
+      userLat: userLat,
+      userLng: userLng,
+    );
   }
 
   Future<List<TechnicianModel>> getRecentlyBookedTechnicians({
@@ -180,11 +187,15 @@ class FirestoreService {
           (a, b) => (b.completedJobs ?? 0).compareTo(a.completedJobs ?? 0),
     );
 
-    if (technicians.length > limit) {
-      return technicians.take(limit).toList();
-    }
+    final limited = technicians.length > limit
+        ? technicians.take(limit).toList()
+        : technicians;
 
-    return technicians;
+    return await attachRouteInfo(
+      technicians: limited,
+      userLat: userLat,
+      userLng: userLng,
+    );
   }
 
 
@@ -271,11 +282,139 @@ class FirestoreService {
       ),
     );
 
-    if (recommendations.length > limit) {
-      return recommendations.take(limit).toList();
+    final result = recommendations.length > limit
+        ? recommendations.take(limit).toList()
+        : recommendations;
+
+    return await attachRouteInfo(
+      technicians: result,
+      userLat: userLat,
+      userLng: userLng,
+    );
+  }
+
+
+  Future<List<TechnicianModel>> attachRouteInfo({
+    required List<TechnicianModel> technicians,
+    required double userLat,
+    required double userLng,
+  }) async {
+    final List<TechnicianModel> result = [];
+
+    for (final tech in technicians) {
+      if (tech.lat == null || tech.lng == null) {
+        result.add(tech);
+        continue;
+      }
+
+      final route =
+      await GoogleMapsService.getDistanceAndEta(
+        originLat: userLat,
+        originLng: userLng,
+        destinationLat: tech.lat!,
+        destinationLng: tech.lng!,
+      );
+
+      if (route == null) {
+        result.add(tech);
+        continue;
+      }
+
+      result.add(
+        tech.copyWith(
+          distanceKm: route["distanceKm"],
+          durationMinutes: route["durationMinutes"],
+        ),
+      );
     }
 
-    return recommendations;
+    return result;
+  }
+
+  Future<TechnicianSearchResult> searchTechnicians({
+    required String service,
+    required double userLat,
+    required double userLng,
+    List<String> selectedSkills = const [],
+  }) async {
+
+    Query query = _db
+        .collection('technicians')
+        .where('isOnline', isEqualTo: true)
+        .where('isVerified', isEqualTo: true)
+        .where('isSuspended', isEqualTo: false)
+        .where('service', isEqualTo: service);
+
+    if (selectedSkills.isNotEmpty) {
+      query = query.where(
+        'skills',
+        arrayContainsAny: selectedSkills,
+      );
+    }
+
+    final snapshot = await query.get();
+
+    final technicians = <TechnicianModel>[];
+
+    for (final doc in snapshot.docs) {
+      final tech = TechnicianModel.fromMap(
+        doc.data() as Map<String, dynamic>,
+      );
+
+      if (tech.lat == null || tech.lng == null) {
+        continue;
+      }
+
+      final distance = LocationService.calculateDistance(
+        userLat,
+        userLng,
+        tech.lat!,
+        tech.lng!,
+      );
+
+      technicians.add(
+        tech.copyWith(
+          distanceKm: distance,
+        ),
+      );
+    }
+
+    technicians.sort(
+          (a, b) => (a.distanceKm ?? 999999)
+          .compareTo(b.distanceKm ?? 999999),
+    );
+
+    double radius = 20;
+    List<TechnicianModel> nearby = [];
+
+    while (nearby.isEmpty && radius <= 100) {
+      nearby = technicians.where((tech) {
+        return (tech.distanceKm ?? 999999) <= radius;
+      }).toList();
+
+      if (nearby.isEmpty) {
+        if (radius == 20) {
+          radius = 40;
+        } else if (radius == 40) {
+          radius = 75;
+        } else if (radius == 75) {
+          radius = 100;
+        } else {
+          break;
+        }
+      }
+    }
+
+    final withRoute = await attachRouteInfo(
+      technicians: nearby,
+      userLat: userLat,
+      userLng: userLng,
+    );
+
+    return TechnicianSearchResult(
+      technicians: withRoute,
+      radiusUsed: radius,
+    );
   }
 
 }

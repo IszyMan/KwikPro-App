@@ -21,6 +21,7 @@ class TechnicianModel {
   final double? avgPriceRating;
   final double? avgServiceRating;
   final double? distanceKm;
+  final int? durationMinutes;
   final double recommendationScore;
 
   TechnicianModel({
@@ -44,6 +45,7 @@ class TechnicianModel {
     this.avgPriceRating,
     this.avgServiceRating,
     this.distanceKm,
+    this.durationMinutes,
     this.recommendationScore = 0,
   });
 
@@ -68,6 +70,7 @@ class TechnicianModel {
     double? avgPriceRating,
     double? avgServiceRating,
     double? distanceKm,
+    int? durationMinutes,
     double? recommendationScore,
   }) {
     return TechnicianModel(
@@ -98,6 +101,8 @@ class TechnicianModel {
       avgServiceRating:
       avgServiceRating ?? this.avgServiceRating,
       distanceKm: distanceKm ?? this.distanceKm,
+      durationMinutes:
+      durationMinutes ?? this.durationMinutes,
       recommendationScore:
       recommendationScore ?? this.recommendationScore,
     );
@@ -124,6 +129,7 @@ class TechnicianModel {
       'completedJobs': completedJobs,
       'avgPriceRating': avgPriceRating,
       'avgServiceRating': avgServiceRating,
+      'durationMinutes': durationMinutes,
     };
   }
 
@@ -151,6 +157,7 @@ class TechnicianModel {
       completedJobs: map['completedJobs'] ?? 0,
       avgPriceRating: (map['avgPriceRating'] ?? 0).toDouble(),
       avgServiceRating: (map['avgServiceRating'] ?? 0).toDouble(),
+      durationMinutes: (map['durationMinutes'] as num?)?.toInt(),
     );
   }
 }
