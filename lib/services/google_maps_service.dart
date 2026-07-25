@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 class GoogleMapsService {
   static const String _apiKey =
-      "";
+      "AIzaSyBEdhbkYQwovpWw5pXM7Cee_p5aO7WkQtU";
 
   static Future<String> reverseGeocode(
       double lat,
@@ -28,7 +28,7 @@ class GoogleMapsService {
       final data = jsonDecode(response.body);
 
       //  Print the complete Google response
-      debugPrint(jsonEncode(data));
+      //debugPrint(jsonEncode(data));
 
       if (data["status"] != "OK") {
         debugPrint("Google Geocoding Error: ${data["status"]}");

@@ -30,7 +30,7 @@ class CompletedJobCard extends StatelessWidget {
     final imageUrl = item.request["imageUrl"] ?? "";
     final description = item.request["description"] ?? "";
     final location =
-        item.request["serviceLocationAddress"] ?? "";
+        (item.request["jobLocation"]?["address"] as String?)?.trim() ?? "";
     final service = item.request["service"] ?? "";
     final createdAt = item.request["createdAt"];
 

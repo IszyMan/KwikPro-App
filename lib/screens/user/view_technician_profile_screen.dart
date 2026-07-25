@@ -620,7 +620,7 @@ class _ViewTechnicianProfileScreenState
         .collection('requests')
         .where('userId', isEqualTo: user.uid)
         .where('technicianId', isEqualTo: widget.technician.uid)
-        .where('type', isEqualTo: 'appointment')
+        .where('type', isEqualTo: 'instant')
         .where('isActive', isEqualTo: true)
         .get();
 
@@ -646,11 +646,13 @@ class _ViewTechnicianProfileScreenState
       "technicianName": widget.technician.name,
       "technicianImage": widget.technician.profilePic,
       "service": widget.technician.service,
-      "serviceLocationAddress": widget.serviceLocationAddress,
       "description": widget.issueDescription,
       "imageUrl": widget.imageUrl.isNotEmpty ? widget.imageUrl : null,
-      "userLat": widget.userLat,
-      "userLng": widget.userLng,
+      "jobLocation": {
+        "address": widget.serviceLocationAddress,
+        "lat": widget.userLat,
+        "lng": widget.userLng,
+      },
       "sessionId": requestSessionId,
       "isActive": true,
       "status": "pending",
@@ -779,7 +781,6 @@ class _ViewTechnicianProfileScreenState
       "technicianImage": widget.technician.profilePic,
 
       "service": widget.technician.service,
-      "serviceLocationAddress": widget.serviceLocationAddress,
       "description": widget.issueDescription,
 
       "jobLocation": {

@@ -70,9 +70,7 @@ class ActiveJobCard extends StatelessWidget {
 
 
     // Support both old and new request structures.
-    final location =
-        request["jobLocation"]?["address"] ??
-            request["serviceLocationAddress"] ??
+    final location = (request["jobLocation"]?["address"] as String?)?.trim() ??
             "Unknown Location";
 
     return Container(
@@ -114,22 +112,30 @@ class ActiveJobCard extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            technician.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  technician.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              if (technician.isVerified) ...[
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.verified,
+                                  color: Colors.green,
+                                  size: 18,
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-
-                        if (technician.isVerified)
-                          const Icon(
-                            Icons.verified,
-                            color: Colors.green,
-                            size: 18,
-                          ),
                       ],
                     ),
 
@@ -152,22 +158,40 @@ class ActiveJobCard extends StatelessWidget {
 
           /// Location
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(
                 Icons.location_on,
                 color: Colors.red,
-                size: 17,
+                size: 18,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  location,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Service Location",
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      location,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+
 
           const SizedBox(height: 14),
 

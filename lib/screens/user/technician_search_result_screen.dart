@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:kwikpro/models/technician_model.dart';
 import 'package:kwikpro/services/firestore_service.dart';
 import 'package:kwikpro/widgets/technician_card.dart';
 

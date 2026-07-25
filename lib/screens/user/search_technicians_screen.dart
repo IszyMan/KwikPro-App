@@ -3,11 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import '../../services/location_repository.dart';
-import '../../services/location_service.dart';
 
 import 'technician_search_result_screen.dart';
 
@@ -188,7 +186,7 @@ class _SearchTechnicianScreenState extends State<SearchTechnicianScreen> {
             service: _selectedService,
             userLat: userLat,
             userLng: userLng,
-            serviceLocationAddress: _location,
+            serviceLocationAddress: location.address,
             issueDescription: _issue,
             imageUrl: _imageUrl,
             selectedSkills: _selectedSkills,

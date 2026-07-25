@@ -32,7 +32,7 @@ class RecentlyBookedWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(
-          title: "Recently Booked",
+          title: "Recently Booked By Others",
           count: technicians.length,
           subtitle: "Technicians customers are booking lately",
           onSeeAll: onSeeAll,

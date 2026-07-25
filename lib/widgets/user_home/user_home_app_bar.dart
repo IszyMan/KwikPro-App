@@ -48,15 +48,10 @@ class UserHomeAppBar extends StatelessWidget
               onTap: onLocationTap,
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.location_on,
-                    size: 14,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 2),
+
                   Expanded(
                     child: Text(
-                      location,
+                     ' 📍 $location',
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 12,

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:kwikpro/screens/user/view_technician_profile_screen.dart';
 import '../../models/job_history_item.dart';
 import '../../services/google_maps_service.dart';
-import '../../services/location_repository.dart';
 import '../../widgets/user_jobs/active_job_card.dart';
 import 'package:kwikpro/models/technician_model.dart';
 import '../../widgets/user_jobs/completed_job_card.dart';
@@ -22,7 +21,8 @@ class UserJobHistoryScreen extends StatefulWidget {
 class _UserJobHistoryScreenState extends State<UserJobHistoryScreen> {
 
   final user = FirebaseAuth.instance.currentUser;
-  final LocationRepository _locationRepository = const LocationRepository();
+
+
 
   /// Cache technicians
   final Map<String, TechnicianModel> _technicianCache = {};
@@ -87,8 +87,10 @@ class _UserJobHistoryScreenState extends State<UserJobHistoryScreen> {
       final techLat = technician.lat;
       final techLng = technician.lng;
 
-      final userLat = (request["userLat"] as num?)?.toDouble();
-      final userLng = (request["userLng"] as num?)?.toDouble();
+      final jobLocation = request["jobLocation"] as Map<String, dynamic>?;
+
+      final userLat = (jobLocation?["lat"] as num?)?.toDouble();
+      final userLng = (jobLocation?["lng"] as num?)?.toDouble();
 
       if (techLat != null &&
           techLng != null &&
@@ -238,7 +240,7 @@ class _UserJobHistoryScreenState extends State<UserJobHistoryScreen> {
                                 const SizedBox(height: 4),
 
                                 Text(
-                                  "${completedItems.length} job${completedItems.length == 1 ? "" : "s"} completed",
+                                  "You have ${completedItems.length} completed job${completedItems.length == 1 ? "" : "s"} on KwikPro",
                                   style: TextStyle(
                                     color: Colors.grey,
                                   ),
@@ -324,7 +326,7 @@ class _UserJobHistoryScreenState extends State<UserJobHistoryScreen> {
                                             technician: technician,
                                             userLat: data["userLat"],
                                             userLng:  data["userLng"],
-                                            serviceLocationAddress:  data["serviceLocationAddress"] ?? "",
+                                            serviceLocationAddress: (data["jobLocation"]?["address"] as String?) ?? "",
                                             issueDescription:  data["description"] ?? "",
                                             imageUrl:  data["imageUrl"] ?? "",
                                             selectedSkills: const [],

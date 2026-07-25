@@ -10,6 +10,8 @@ class ShowcaseFeedWidget extends StatefulWidget {
 
 class _ShowcaseFeedWidgetState extends State<ShowcaseFeedWidget> {
   final Map<String, bool> wouldHireMap = {};
+  final ScrollController _feedController = ScrollController();
+  final List<GlobalKey> _cardKeys = [];
 
   String formatTime(Timestamp? ts) {
     if (ts == null) return "";
@@ -26,6 +28,42 @@ class _ShowcaseFeedWidgetState extends State<ShowcaseFeedWidget> {
     });
   }
 
+  Future<void> _scrollToNextPost(int index) async {
+    if (index + 1 >= _cardKeys.length) return;
+
+    final context = _cardKeys[index + 1].currentContext;
+
+    if (context != null) {
+      await Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignment: 0,
+      );
+    }
+  }
+
+  Future<void> _scrollToPreviousPost(int index) async {
+    if (index <= 0) return;
+
+    final context = _cardKeys[index - 1].currentContext;
+
+    if (context != null) {
+      await Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignment: 0,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _feedController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -40,9 +78,12 @@ class _ShowcaseFeedWidgetState extends State<ShowcaseFeedWidget> {
 
         final docs = snapshot.data!.docs;
 
+        while (_cardKeys.length < docs.length) {
+          _cardKeys.add(GlobalKey());
+        }
+
         return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          controller: _feedController,
           itemCount: docs.length,
           itemBuilder: (context, index) {
             final doc = docs[index];
@@ -55,6 +96,7 @@ class _ShowcaseFeedWidgetState extends State<ShowcaseFeedWidget> {
             final isWouldHire = wouldHireMap[postId] ?? false;
 
             return Container(
+              key: _cardKeys[index],
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -124,6 +166,8 @@ class _ShowcaseFeedWidgetState extends State<ShowcaseFeedWidget> {
                   _BeforeAfterScrollView(
                     before: before,
                     after: after,
+                    onNextPost: () => _scrollToNextPost(index),
+                    onPreviousPost: () => _scrollToPreviousPost(index),
                   ),
 
                   const SizedBox(height: 12),
@@ -193,9 +237,15 @@ class _BeforeAfterScrollView extends StatefulWidget {
   final List<String> before;
   final List<String> after;
 
+  final VoidCallback onNextPost;
+  final VoidCallback onPreviousPost;
+
   const _BeforeAfterScrollView({
+    super.key,
     required this.before,
     required this.after,
+    required this.onNextPost,
+    required this.onPreviousPost,
   });
 
   @override
@@ -203,52 +253,122 @@ class _BeforeAfterScrollView extends StatefulWidget {
       _BeforeAfterScrollViewState();
 }
 
-class _BeforeAfterScrollViewState extends State<_BeforeAfterScrollView> {
-  final PageController _vertical = PageController();
+class _BeforeAfterScrollViewState
+    extends State<_BeforeAfterScrollView> {
+
+  bool _showAfter = false;
+
+  double _dragDistance = 0;
+
+  static const double _threshold = 70;
+
+  void _onVerticalDragUpdate(DragUpdateDetails details) {
+    _dragDistance += details.delta.dy;
+  }
+
+  void _onVerticalDragEnd(DragEndDetails details) async {
+
+    //
+    // Swipe Up
+    //
+    if (_dragDistance < -_threshold) {
+
+      if (!_showAfter) {
+        setState(() {
+          _showAfter = true;
+        });
+      } else {
+
+        widget.onNextPost();
+      }
+    }
+
+    //
+    // Swipe Down
+    //
+    else if (_dragDistance > _threshold) {
+
+      if (_showAfter) {
+        setState(() {
+          _showAfter = false;
+        });
+      } else {
+
+        widget.onPreviousPost();
+      }
+    }
+
+    _dragDistance = 0;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 280,
-      child: PageView(
-        controller: _vertical,
-        scrollDirection: Axis.vertical,
-        children: [
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
 
-          /// ================= BEFORE =================
-          _MediaSection(
-            title: "BEFORE",
-            hint: "Swipe up → AFTER",
-            images: widget.before,
-            color: Colors.orange,
-          ),
+      onVerticalDragUpdate: _onVerticalDragUpdate,
 
-          /// ================= AFTER =================
-          _MediaSection(
-            title: "AFTER",
-            hint: "Swipe down → BEFORE",
-            images: widget.after,
-            color: Colors.green,
-          ),
-        ],
+      onVerticalDragEnd: _onVerticalDragEnd,
+
+      child: SizedBox(
+        height: 280,
+        child: _MediaSection(
+          images: _showAfter
+              ? widget.after
+              : widget.before,
+
+          title: _showAfter ? "AFTER" : "BEFORE",
+
+          hint: _showAfter
+              ? "Swipe ↓ for BEFORE"
+              : "Swipe ↑ for AFTER",
+
+          color: _showAfter
+              ? Colors.green
+              : Colors.orange,
+        ),
       ),
     );
   }
 }
 
-
-class _MediaSection extends StatelessWidget {
+class _MediaSection extends StatefulWidget {
   final String title;
   final String hint;
   final List<String> images;
   final Color color;
 
   const _MediaSection({
+    super.key,
     required this.title,
     required this.hint,
     required this.images,
     required this.color,
   });
+
+  @override
+  State<_MediaSection> createState() => _MediaSectionState();
+}
+
+class _MediaSectionState extends State<_MediaSection> {
+  late final PageController _images;
+
+  int _currentImage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _images = PageController(
+      viewportFraction: 0.92,
+    );
+  }
+
+  @override
+  void dispose() {
+    _images.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -257,17 +377,24 @@ class _MediaSection extends StatelessWidget {
 
         /// ================= HORIZONTAL IMAGE SCROLL =================
         PageView.builder(
-          controller: PageController(viewportFraction: 0.92),
-          itemCount: images.isEmpty ? 1 : images.length,
+          controller: _images,
+          onPageChanged: (index) {
+            setState(() {
+              _currentImage = index;
+            });
+          },
+          itemCount: widget.images.isEmpty ? 1 : widget.images.length,
           itemBuilder: (context, i) {
-            if (images.isEmpty) {
+            if (widget.images.isEmpty) {
               return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Center(child: Text("No images")),
+                child: const Center(
+                  child: Text("No images"),
+                ),
               );
             }
 
@@ -276,7 +403,7 @@ class _MediaSection extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 image: DecorationImage(
-                  image: NetworkImage(images[i]),
+                  image: NetworkImage(widget.images[i]),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -284,20 +411,50 @@ class _MediaSection extends StatelessWidget {
           },
         ),
 
-        /// ================= LABEL =================
+        /// ================= IMAGE COUNTER =================
         Positioned(
           top: 10,
-          left: 10,
+          right: 22,
           child: Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: 10, vertical: 4),
+              horizontal: 10,
+              vertical: 4,
+            ),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.9),
+              color: Colors.black54,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              title,
-              style: const TextStyle(color: Colors.white),
+              "${widget.images.isEmpty ? 0 : _currentImage + 1}/${widget.images.isEmpty ? 0 : widget.images.length}",
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+
+
+        /// ================= BEFORE / AFTER =================
+        Positioned(
+          top: 10,
+          left: 22,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: widget.color.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              widget.title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -310,13 +467,15 @@ class _MediaSection extends StatelessWidget {
           child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
+                horizontal: 12,
+                vertical: 6,
+              ),
               decoration: BoxDecoration(
                 color: Colors.black87,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                hint,
+                widget.hint,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
