@@ -16,13 +16,15 @@ class ShowcaseScreen extends StatelessWidget {
 
           // Future filters
           SizedBox(
-            width: 5,
             height: 55,
             child: ListView(
               scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               children: const [
                 Chip(label: Text("Trending")),
+                SizedBox(width: 8),
                 Chip(label: Text("Nearby")),
+                SizedBox(width: 8),
                 Chip(label: Text("Videos")),
               ],
             ),

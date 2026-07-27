@@ -230,7 +230,7 @@ class _UserJobHistoryScreenState extends State<UserJobHistoryScreen> {
                               children: [
 
                                 const Text(
-                                  "Completed Jobs",
+                                  "Previous Completed Jobs",
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,

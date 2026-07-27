@@ -671,6 +671,8 @@ class TechnicianJobsScreen extends StatelessWidget {
     );
   }
 
+
+
   // ================= PRICE + START JOB =================
 
   void _showPriceDialog(BuildContext context, String id, Map data) {
@@ -770,11 +772,13 @@ class TechnicianJobsScreen extends StatelessWidget {
     switch (status) {
 
 
+
+
       case "arrived":
         await NotificationService.send(
           recipientId: userId,
-          title: "Technician Arrived",
-          body: "Your technician has arrived at your location",
+          title: "$service Arrived",
+          body: "Your $service has arrived at your location.",
           requestId: id,
           type: "arrived",
         );
@@ -786,4 +790,7 @@ class TechnicianJobsScreen extends StatelessWidget {
 
     }
   }
+
+
+
 }

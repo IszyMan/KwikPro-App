@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 class GoogleMapsService {
   static const String _apiKey =
-      "AIzaSyBEdhbkYQwovpWw5pXM7Cee_p5aO7WkQtU";
+      "";
 
   static Future<String> reverseGeocode(
       double lat,
