@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:kwikpro/screens/user/user_job_history_screen.dart';
 import 'package:kwikpro/screens/user/user_profile_screen.dart';
 import '../../core/colors.dart';
-import '../chat/chats_screen.dart';
+import '../../chat/screens/chats_screen.dart';
 import '../showcase/showcase_screen.dart';
 import 'user_home_screen.dart';
 

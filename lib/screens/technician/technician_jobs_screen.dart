@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/notification_service.dart';
-import '../chat/conversation_screen.dart';
-import '../chat/chat_service.dart';
+import '../../chat/screens/conversation_screen.dart';
+import '../../chat/services/chat_service.dart';
 import 'completed_jobs_screen.dart';
 
 class TechnicianJobsScreen extends StatelessWidget {
@@ -265,7 +265,7 @@ class TechnicianJobsScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: StreamBuilder<int>(
-                        stream: ChatService.unreadCountStream(doc.id, techId),
+                        stream: ChatService.unreadCount(doc.id, techId),
                         builder: (context, snapshot) {
                           final unreadCount = snapshot.data ?? 0;
 
@@ -278,17 +278,15 @@ class TechnicianJobsScreen extends StatelessWidget {
                             ),
                             onPressed: () async {
                               // ensure chat exists before opening
-                              await FirebaseFirestore.instance
-                                  .collection('chats')
-                                  .doc(doc.id)
-                                  .set({
-                                "requestId": doc.id,
-                                "participants": [
-                                  data['userId'],
-                                  techId,
-                                ],
-                                "updatedAt": FieldValue.serverTimestamp(),
-                              }, SetOptions(merge: true));
+                              await ChatService.createChat(
+                                requestId: doc.id,
+                                userId: data['userId'],
+                                userName: data['userName'],
+                                userImage: data['userImage'],
+                                technicianId: techId,
+                                technicianName: data['technicianName'],
+                                technicianImage: data['technicianImage'],
+                              );
 
 
 

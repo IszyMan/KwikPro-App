@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:kwikpro/models/technician_model.dart';
 import 'package:kwikpro/screens/user/rating_review_screen.dart';
 
-import '../chat/conversation_screen.dart';
-import '../chat/chat_service.dart';
+import '../../chat/screens/conversation_screen.dart';
+import '../../chat/services/chat_service.dart';
 
 class ActiveJobScreen extends StatefulWidget {
   final TechnicianModel technician;
@@ -24,30 +24,6 @@ class ActiveJobScreen extends StatefulWidget {
 class _ActiveJobScreenState extends State<ActiveJobScreen> {
 
   String? _status;
-
-  Future<void> markAsRead() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    final messagesRef = FirebaseFirestore.instance
-        .collection('chats')
-        .doc(widget.requestId)
-        .collection('messages');
-
-    final unread = await messagesRef
-        .where('receiverId', isEqualTo: uid)
-        .where('read', isEqualTo: false)
-        .get();
-
-    final batch = FirebaseFirestore.instance.batch();
-
-    for (final doc in unread.docs) {
-      batch.update(doc.reference, {
-        'read': true,
-      });
-    }
-
-    await batch.commit();
-  }
 
 
   @override
@@ -120,7 +96,7 @@ class _ActiveJobScreenState extends State<ActiveJobScreen> {
           SizedBox(
             width: double.infinity,
             child: StreamBuilder<int>(
-              stream: ChatService.unreadCountStream(
+              stream: ChatService.unreadCount(
                 widget.requestId,
                 FirebaseAuth.instance.currentUser!.uid,
               ),
@@ -134,7 +110,7 @@ class _ActiveJobScreenState extends State<ActiveJobScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
 
 
                     Navigator.push(
@@ -149,7 +125,10 @@ class _ActiveJobScreenState extends State<ActiveJobScreen> {
                       ),
 
                     );
-                    markAsRead();
+                    await ChatService.markAsRead(
+                      chatId: widget.requestId,
+                      userId: FirebaseAuth.instance.currentUser!.uid,
+                    );
                   },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
